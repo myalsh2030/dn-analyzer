@@ -820,10 +820,15 @@ const App = (() => {
                     html += `<div class="instructor-header"><i class="bi bi-person-badge"></i> المدرب: ${g.instructor} (${g.items.length} متدرب)</div>`;
                     html += `<table class="data-table"><thead><tr>
                         <th>م</th><th>رقم المتدرب</th><th>اسم المتدرب</th><th>رقم الجوال</th><th>التخصص</th>
+                        <th>الحرمان</th>
                         <th>المقرر</th><th>اسم المقرر</th><th>الرقم المرجعي</th><th>نوع الجدولة</th><th>المدرب</th>
                     </tr></thead><tbody>`;
                     g.items.forEach((item, i) => {
+                        const _totalC = item.trainee.courses.size;
+                        let _depC = 0;
+                        item.trainee.courses.forEach(c => { if (c.deprived) _depC++; });
                         html += `<tr><td>${i + 1}</td><td>${item.trainee.id}</td><td>${item.trainee.name}</td><td>${item.trainee.phone}</td><td>${item.trainee.spec}</td>
+                            <td class="dep-ratio-cell"><span class="dep-ratio-num">${_depC}</span> <span class="dep-ratio-sep">/</span> <span class="dep-ratio-den">${_totalC}</span></td>
                             <td>${item.course.code}</td><td>${item.course.name}</td><td>${item.course.ref}</td><td>${item.course.schedule}</td><td>${item.course.instructor}</td></tr>`;
                     });
                     html += '</tbody></table>';
@@ -867,10 +872,15 @@ const App = (() => {
                     html += `<div class="instructor-header"><i class="bi bi-person-badge"></i> المدرب: ${g.instructor} (${g.items.length} سجل)</div>`;
                     html += `<table class="data-table"><thead><tr>
                         <th>م</th><th>رقم المتدرب</th><th>اسم المتدرب</th><th>رقم الجوال</th><th>التخصص</th>
+                        <th>الحرمان</th>
                         <th>المقرر</th><th>اسم المقرر</th><th>الرقم المرجعي</th><th>نوع الجدولة</th><th>المدرب</th>
                     </tr></thead><tbody>`;
                     g.items.forEach((item, i) => {
+                        const _totalC = item.trainee.courses.size;
+                        let _depC = 0;
+                        item.trainee.courses.forEach(c => { if (c.deprived) _depC++; });
                         html += `<tr><td>${i + 1}</td><td>${item.trainee.id}</td><td>${item.trainee.name}</td><td>${item.trainee.phone}</td><td>${item.trainee.spec}</td>
+                            <td class="dep-ratio-cell"><span class="dep-ratio-num">${_depC}</span> <span class="dep-ratio-sep">/</span> <span class="dep-ratio-den">${_totalC}</span></td>
                             <td>${item.course.code}</td><td>${item.course.name}</td><td>${item.course.ref}</td><td>${item.course.schedule}</td><td>${item.course.instructor}</td></tr>`;
                     });
                     html += '</tbody></table>';

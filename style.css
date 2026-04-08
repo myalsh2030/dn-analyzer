@@ -862,17 +862,44 @@ body {
 #depAllContainer .data-table th:nth-child(5) { width: 20%; } /* التخصص */
 #depAllContainer .data-table th:nth-child(6) { width: 18%; } /* القسم */
 
-/* === أعمدة تبويبي "إلا مقرر" و "إلا مقررين" (10 أعمدة) === */
-#depOneContainer .data-table th:nth-child(1), #depTwoContainer .data-table th:nth-child(1) { width: 4%; }   /* م */
-#depOneContainer .data-table th:nth-child(2), #depTwoContainer .data-table th:nth-child(2) { width: 7%; }   /* رقم المتدرب */
-#depOneContainer .data-table th:nth-child(3), #depTwoContainer .data-table th:nth-child(3) { width: 16%; }  /* اسم المتدرب */
-#depOneContainer .data-table th:nth-child(4), #depTwoContainer .data-table th:nth-child(4) { width: 8%; }   /* رقم الجوال */
-#depOneContainer .data-table th:nth-child(5), #depTwoContainer .data-table th:nth-child(5) { width: 12%; }  /* التخصص */
-#depOneContainer .data-table th:nth-child(6), #depTwoContainer .data-table th:nth-child(6) { width: 6%; }   /* المقرر */
-#depOneContainer .data-table th:nth-child(7), #depTwoContainer .data-table th:nth-child(7) { width: 18%; }  /* اسم المقرر */
-#depOneContainer .data-table th:nth-child(8), #depTwoContainer .data-table th:nth-child(8) { width: 8%; }   /* الرقم المرجعي */
-#depOneContainer .data-table th:nth-child(9), #depTwoContainer .data-table th:nth-child(9) { width: 7%; }   /* نوع الجدولة */
-#depOneContainer .data-table th:nth-child(10), #depTwoContainer .data-table th:nth-child(10) { width: 14%; } /* المدرب */
+/* === أعمدة تبويبي "إلا مقرر" و "إلا مقررين" (11 عمود) === */
+#depOneContainer .data-table th:nth-child(1), #depTwoContainer .data-table th:nth-child(1) { width: 3.5%; }   /* م */
+#depOneContainer .data-table th:nth-child(2), #depTwoContainer .data-table th:nth-child(2) { width: 7%; }     /* رقم المتدرب */
+#depOneContainer .data-table th:nth-child(3), #depTwoContainer .data-table th:nth-child(3) { width: 15%; }    /* اسم المتدرب */
+#depOneContainer .data-table th:nth-child(4), #depTwoContainer .data-table th:nth-child(4) { width: 7.5%; }   /* رقم الجوال */
+#depOneContainer .data-table th:nth-child(5), #depTwoContainer .data-table th:nth-child(5) { width: 11%; }    /* التخصص */
+#depOneContainer .data-table th:nth-child(6), #depTwoContainer .data-table th:nth-child(6) { width: 6%; }     /* الحرمان */
+#depOneContainer .data-table th:nth-child(7), #depTwoContainer .data-table th:nth-child(7) { width: 6%; }     /* المقرر */
+#depOneContainer .data-table th:nth-child(8), #depTwoContainer .data-table th:nth-child(8) { width: 16%; }    /* اسم المقرر */
+#depOneContainer .data-table th:nth-child(9), #depTwoContainer .data-table th:nth-child(9) { width: 7%; }     /* الرقم المرجعي */
+#depOneContainer .data-table th:nth-child(10), #depTwoContainer .data-table th:nth-child(10) { width: 7%; }   /* نوع الجدولة */
+#depOneContainer .data-table th:nth-child(11), #depTwoContainer .data-table th:nth-child(11) { width: 14%; }  /* المدرب */
+
+/* === تنسيق عمود نسبة الحرمان (العرض فقط — لا يُطبع) === */
+.dep-ratio-cell {
+    font-weight: 800;
+    font-size: 0.82rem;
+    white-space: nowrap;
+    letter-spacing: 0.5px;
+    direction: ltr;
+    unicode-bidi: embed;
+}
+.dep-ratio-num {
+    color: var(--error);
+    font-weight: 800;
+    font-size: 0.88rem;
+}
+.dep-ratio-sep {
+    color: var(--outline);
+    font-weight: 600;
+    opacity: 0.6;
+    margin: 0 1px;
+}
+.dep-ratio-den {
+    color: var(--on-surface-variant);
+    font-weight: 700;
+    font-size: 0.82rem;
+}
 
 .dept-header {
     background: linear-gradient(135deg, var(--primary), var(--primary-container));
