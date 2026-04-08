@@ -22,8 +22,11 @@ const App = (() => {
         deprivedExceptOne: [],
         deprivedExceptTwo: [],
         stats: [],
-        charts: {}
+        charts: {},
+        reportDate: null      // تاريخ تحميل/رفع التقرير (ISO string)
     };
+
+    let _ageInterval = null;  // مؤقت تحديث عمر التقرير
 
     const STORAGE_KEY = 'sf01_deprivation_data';
     const EXCLUDED_STATUSES = ['انسحاب فصلي', 'منقطع أسبوعين', 'مطوي قيده'];
@@ -149,6 +152,8 @@ const App = (() => {
             complete: results => {
                 setTimeout(() => {
                     processData(results.data);
+                    // تعيين تاريخ التقرير من تاريخ تعديل الملف (file.lastModified)
+                    state.reportDate = new Date(file.lastModified).toISOString();
                     // استعادة الإعدادات المحفوظة (تنظيم الأقسام) بعد معالجة الملف الجديد
                     try {
                         const settingsRaw = localStorage.getItem(SETTINGS_KEY);
@@ -374,6 +379,8 @@ const App = (() => {
         document.getElementById('topSemester').textContent = state.semester;
         document.getElementById('topCollege').textContent = state.collegeName;
         document.getElementById('settingsCollege').value = state.collegeName;
+        // عرض تاريخ التقرير
+        showReportDateUI();
         calculateDeprivation();
         calculateStats();
         populateFilters();
@@ -884,11 +891,12 @@ const App = (() => {
     }
 
     // ===== مساعد: التاريخ الهجري =====
-    function getHijriDate() {
+    function getHijriDate(dateObj) {
         try {
+            const target = dateObj || new Date();
             const parts = new Intl.DateTimeFormat('en-US-u-ca-islamic-umalqura', {
                 day: '2-digit', month: '2-digit', year: 'numeric'
-            }).formatToParts(new Date());
+            }).formatToParts(target);
             const d = parts.find(p => p.type === 'day').value;
             const m = parts.find(p => p.type === 'month').value;
             const y = parts.find(p => p.type === 'year').value;
@@ -896,16 +904,11 @@ const App = (() => {
         } catch { return ''; }
     }
 
-    function getGregorianDate() {
-        const date = new Date();
-        const d = String(date.getDate()).padStart(2, '0');
-        const m = String(date.getMonth() + 1).padStart(2, '0');
-        const y = date.getFullYear();
-        return `${d}-${m}-${y}`;
-    }
-
     // ===== بناء ترويسة الطباعة =====
     function buildPrintHeader(reportTitle, deptName, specNames) {
+        const reportHijri = state.reportDate ? getHijriDate(new Date(state.reportDate)) : getHijriDate();
+        const printHijri = getHijriDate();
+
         return `<div class="print-header">
             <div class="print-header-col">
                 <div><strong>المملكة العربية السعودية</strong></div>
@@ -917,8 +920,8 @@ const App = (() => {
             </div>
             <div class="print-header-col">
                 <div><strong>${state.semester}</strong></div>
-                <div>${getHijriDate()} هـ</div>
-                <div>${getGregorianDate()}</div>
+                <div style="margin-top:3px;"><strong>تاريخ التقرير:</strong> ${reportHijri} هـ</div>
+                <div style="font-size:8px;color:#888;margin-top:2px;">تاريخ الطباعة: ${printHijri} هـ</div>
             </div>
         </div>
         ${reportTitle ? `<div class="print-report-title-full">${reportTitle}</div>` : ''}
@@ -1504,7 +1507,8 @@ const App = (() => {
                 deptSpecMapping: state.deptSpecMapping,
                 departments: {},
                 addedDepts: Array.from(state.addedDepts),
-                allKnownSpecs: Array.from(state.allKnownSpecs)
+                allKnownSpecs: Array.from(state.allKnownSpecs),
+                reportDate: state.reportDate
             };
             Object.keys(state.departments).forEach(d => {
                 settings.departments[d] = Array.from(state.departments[d]);
@@ -1575,6 +1579,10 @@ const App = (() => {
                 // استعادة الإعدادات المحفوظة
                 if (savedSettings) {
                     applySettings(savedSettings);
+                    // استعادة تاريخ التقرير
+                    if (savedSettings.reportDate) {
+                        state.reportDate = savedSettings.reportDate;
+                    }
                 }
 
                 calculateDeprivation();
@@ -1627,6 +1635,7 @@ const App = (() => {
 
     function clearData() {
         if (!confirm('هل تريد حذف جميع البيانات والإعدادات المحفوظة؟')) return;
+        if (_ageInterval) clearInterval(_ageInterval);
         localStorage.removeItem(STORAGE_KEY);
         localStorage.removeItem(SETTINGS_KEY);
         idbClear().finally(() => location.reload());
@@ -1640,6 +1649,139 @@ const App = (() => {
         document.getElementById('savedDataNotice').classList.add('d-none');
     }
 
+    // ===== عمر التقرير وتاريخه =====
+
+    // حساب عمر التقرير
+    function calcReportAge(reportDateISO) {
+        if (!reportDateISO) return null;
+        const reportTime = new Date(reportDateISO).getTime();
+        const now = Date.now();
+        const diffMs = now - reportTime;
+        if (diffMs < 0) return { days: 0, hours: 0, minutes: 0, isOld: false };
+        const totalMinutes = Math.floor(diffMs / 60000);
+        const days = Math.floor(totalMinutes / 1440);
+        const hours = Math.floor((totalMinutes % 1440) / 60);
+        const minutes = totalMinutes % 60;
+        const isOld = days >= 1;
+        return { days, hours, minutes, isOld };
+    }
+
+    // بناء نص عمر التقرير
+    function buildAgeHTML(age) {
+        if (!age) return '';
+        const parts = [];
+        if (age.days > 0) {
+            parts.push(`<span class="age-segment"><span class="age-value">${age.days}</span><span class="age-label">يوم</span></span>`);
+        }
+        parts.push(`<span class="age-segment"><span class="age-value">${age.hours}</span><span class="age-label">ساعة</span></span>`);
+        parts.push(`<span class="age-segment"><span class="age-value">${age.minutes}</span><span class="age-label">دقيقة</span></span>`);
+        return parts.join('<span class="age-divider"></span>');
+    }
+
+    // تحديث واجهة عمر التقرير (شاشة الرفع + الشريط العلوي)
+    function updateReportAgeUI() {
+        if (!state.reportDate) return;
+        const age = calcReportAge(state.reportDate);
+        if (!age) return;
+        const cls = age.isOld ? 'age-warning' : 'age-normal';
+
+        // شاشة الرفع
+        const ageEl = document.getElementById('reportAge');
+        if (ageEl) {
+            ageEl.innerHTML = `<i class="bi bi-hourglass-split"></i> عمر التقرير: ${buildAgeHTML(age)}`;
+            ageEl.className = `report-age ${cls}`;
+        }
+
+        // الشريط العلوي — شارة العمر المختصرة
+        const topAge = document.getElementById('topReportAge');
+        if (topAge) {
+            const shortAge = age.days > 0 ? `${age.days} يوم ${age.hours} س` : `${age.hours} س ${age.minutes} د`;
+            topAge.textContent = shortAge;
+            topAge.className = `top-report-age ${cls}`;
+        }
+
+        // البوبوفر — عمر مفصل
+        const popoverAge = document.getElementById('reportAgeTop');
+        if (popoverAge) {
+            popoverAge.innerHTML = `<i class="bi bi-hourglass-split"></i> عمر التقرير: ${buildAgeHTML(age)}`;
+            popoverAge.className = `report-age ${cls}`;
+        }
+    }
+
+    // عرض واجهة تاريخ التقرير
+    function showReportDateUI() {
+        if (!state.reportDate) return;
+
+        const dt = new Date(state.reportDate);
+        const local = new Date(dt.getTime() - dt.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+
+        // شاشة الرفع
+        const section = document.getElementById('reportDateSection');
+        const input = document.getElementById('reportDateInput');
+        if (section && input) {
+            section.classList.remove('d-none');
+            input.value = local;
+        }
+
+        // الشريط العلوي — شارة التاريخ
+        const badge = document.getElementById('topReportDateBadge');
+        const topDateSpan = document.getElementById('topReportDate');
+        if (badge && topDateSpan) {
+            badge.classList.remove('d-none');
+            topDateSpan.textContent = dt.toLocaleDateString('ar-SA', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+        }
+
+        // البوبوفر — حقل الإدخال
+        const inputTop = document.getElementById('reportDateInputTop');
+        if (inputTop) {
+            inputTop.value = local;
+        }
+
+        // تحديث العمر فوراً ثم كل دقيقة
+        updateReportAgeUI();
+        if (_ageInterval) clearInterval(_ageInterval);
+        _ageInterval = setInterval(updateReportAgeUI, 60000);
+    }
+
+    // فتح/إغلاق بوبوفر تعديل التاريخ
+    function toggleReportDatePopover(e) {
+        e.stopPropagation();
+        const popover = document.getElementById('reportDatePopover');
+        if (!popover) return;
+        const isOpen = popover.classList.contains('show');
+        if (isOpen) {
+            popover.classList.remove('show');
+        } else {
+            popover.classList.add('show');
+            // إغلاق عند النقر خارج البوبوفر
+            setTimeout(() => {
+                document.addEventListener('click', _closePopoverOnClickOutside, { once: true });
+            }, 10);
+        }
+    }
+
+    function _closePopoverOnClickOutside(e) {
+        const popover = document.getElementById('reportDatePopover');
+        if (popover && !popover.contains(e.target)) {
+            popover.classList.remove('show');
+        }
+    }
+
+    // تحديث تاريخ التقرير من input
+    function updateReportDate(value) {
+        if (!value) return;
+        state.reportDate = new Date(value).toISOString();
+        saveToStorage();
+        showReportDateUI();
+    }
+
+    // تعيين الوقت الحالي
+    function setReportDateNow() {
+        state.reportDate = new Date().toISOString();
+        saveToStorage();
+        showReportDateUI();
+    }
+
     // ===== التشغيل =====
     document.addEventListener('DOMContentLoaded', init);
 
@@ -1649,6 +1791,7 @@ const App = (() => {
         saveCollegeName, unlinkSpec,
         showAddDeptInput, addDeptFromBoard,
         clearData, loadNewFile,
-        setPercentMode
+        setPercentMode,
+        updateReportDate, setReportDateNow, toggleReportDatePopover
     };
 })();

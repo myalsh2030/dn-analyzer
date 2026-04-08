@@ -97,6 +97,23 @@
             <i class="bi bi-database-check"></i>
             <span>تم استرداد بيانات محفوظة سابقاً. يمكنك رفع ملف جديد لتحديثها.</span>
         </div>
+
+        <!-- معلومات تاريخ التقرير -->
+        <div id="reportDateSection" class="report-date-section d-none">
+            <div class="report-date-header">
+                <i class="bi bi-calendar-event"></i>
+                <span>تاريخ التقرير</span>
+            </div>
+            <div class="report-date-body">
+                <div class="report-date-input-wrapper">
+                    <input type="datetime-local" id="reportDateInput" class="report-date-input" onchange="App.updateReportDate(this.value)">
+                    <button class="report-date-now-btn" onclick="App.setReportDateNow()" title="تعيين الوقت الحالي">
+                        <i class="bi bi-clock-history"></i> الآن
+                    </button>
+                </div>
+                <div id="reportAge" class="report-age"></div>
+            </div>
+        </div>
             </div>
         </div>
     </div>
@@ -125,6 +142,29 @@
                     <div class="d-flex align-items-center gap-2 px-3 py-1 bg-white shadow-sm" style="border: 1px solid var(--outline-variant); border-radius: var(--radius-md); color: var(--on-surface-variant); font-weight: 700; font-size: 0.9rem;">
                         <i class="bi bi-calendar3"></i>
                         <span id="topSemester"></span>
+                    </div>
+
+                    <!-- تاريخ التقرير في الشريط العلوي -->
+                    <div id="topReportDateBadge" class="top-report-date-badge d-none" onclick="App.toggleReportDatePopover(event)">
+                        <i class="bi bi-clock"></i>
+                        <span id="topReportDate"></span>
+                        <span id="topReportAge" class="top-report-age"></span>
+                        <i class="bi bi-pencil-square report-date-edit-icon"></i>
+                        <!-- بوبوفر تعديل التاريخ -->
+                        <div id="reportDatePopover" class="report-date-popover" onclick="event.stopPropagation()">
+                            <div class="report-date-popover-title">
+                                <i class="bi bi-calendar-event"></i> تعديل تاريخ التقرير
+                            </div>
+                            <div class="report-date-popover-body">
+                                <div class="report-date-input-wrapper">
+                                    <input type="datetime-local" id="reportDateInputTop" class="report-date-input" onchange="App.updateReportDate(this.value)">
+                                    <button class="report-date-now-btn" onclick="App.setReportDateNow()" title="تعيين الوقت الحالي">
+                                        <i class="bi bi-clock-history"></i> الآن
+                                    </button>
+                                </div>
+                                <div id="reportAgeTop" class="report-age"></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
