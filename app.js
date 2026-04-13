@@ -18,6 +18,7 @@ const App = (() => {
         allKnownSpecs: new Set(),  // جميع التخصصات المعروفة (لا تُحذف أبداً)
         instructors: {},       // instructorName -> { dept, spec }
         deptSpecMapping: {},   // spec -> dept (editable)
+        deptPhones: {},        // deptName -> phone string (WhatsApp)
         deprivedAll: [],
         deprivedExceptOne: [],
         deprivedExceptTwo: [],
@@ -460,12 +461,40 @@ const App = (() => {
             return '';
         };
 
+        // حساب الحالات الحرجة جداً (متبقي مقررين من نفس المدرب + نسبة الحرمان أكثر من 50%)
+        let depTwoAbove50Count = 0;
+        let criticalDepTwoCount = 0;
+        state.deprivedExceptTwo.forEach(({ trainee, remainingCourses }) => {
+            const totalC = trainee.courses.size;
+            let depC = 0;
+            trainee.courses.forEach(crs => { if (crs.deprived) depC++; });
+            if (depC / totalC < 0.5) return;
+            
+            depTwoAbove50Count++;
+
+            const inst1 = remainingCourses[0].instructor || 'غير محدد';
+            const inst2 = remainingCourses[1].instructor || 'غير محدد';
+            if (inst1 !== 'غير محدد' && inst1 === inst2) {
+                criticalDepTwoCount++;
+            }
+        });
+
         let html = `<div class="stat-cards">
-            <div class="stat-card"><div class="stat-value">${totalTrainees}</div><div class="stat-label">إجمالي المتدربين</div></div>
-            <div class="stat-card"><div class="stat-value">${totalActive}</div><div class="stat-label">المتدربين المستمرين</div>${percentMode !== 'none' ? `<div class="stat-pct">${totalTrainees ? Math.round((totalActive / totalTrainees) * 100) : 0}%</div>` : ''}</div>
-            <div class="stat-card"><div class="stat-value val-danger">${state.deprivedAll.length}</div><div class="stat-label">(مستمر) محروم بجميع المقررات</div>${cardPct(state.deprivedAll.length, 'da')}</div>
-            <div class="stat-card"><div class="stat-value val-warn">${state.deprivedExceptOne.length}</div><div class="stat-label">محروم إلا مقرر</div>${cardPct(state.deprivedExceptOne.length, 'd1')}</div>
-            <div class="stat-card"><div class="stat-value" style="color:var(--secondary)">${state.deprivedExceptTwo.length}</div><div class="stat-label">محروم إلا مقررين</div>${cardPct(state.deprivedExceptTwo.length, 'd2')}</div>
+            <div class="stat-card" title="إجمالي عدد المتدربين المقيدين في التقرير بمختلف حالاتهم"><div class="stat-value">${totalTrainees}</div><div class="stat-label">إجمالي المتدربين</div></div>
+            <div class="stat-card" title="إجمالي المتدربين المستمرين بالتدريب فعلياً&#13;&#10;(استبعد النظام المطوي قيدهم والمنسحبين)"><div class="stat-value">${totalActive}</div><div class="stat-label">المتدربين المستمرين</div>${percentMode !== 'none' ? `<div class="stat-pct">${totalTrainees ? Math.round((totalActive / totalTrainees) * 100) : 0}%</div>` : ''}</div>
+            <div class="stat-card" title="المتدربون المستمرون الذين تم حرمانهم في جميع مقرراتهم التدريبية"><div class="stat-value val-danger">${state.deprivedAll.length}</div><div class="stat-label">(مستمر) محروم بجميع المقررات</div>${cardPct(state.deprivedAll.length, 'da')}</div>
+            <div class="stat-card" title="متدربون محرومون في كافة مقرراتهم،&#13;&#10;ويتبقى لهم مقرر واحد فقط للرسوب الكلي"><div class="stat-value val-warn">${state.deprivedExceptOne.length}</div><div class="stat-label">محروم إلا مقرر</div>${cardPct(state.deprivedExceptOne.length, 'd1')}</div>
+            <div class="stat-card" title="متدربون محرومون في كافة مقرراتهم،&#13;&#10;ويتبقى لهم مقررين اثنين فقط للرسوب الكلي"><div class="stat-value" style="color:var(--secondary)">${state.deprivedExceptTwo.length}</div><div class="stat-label">محروم إلا مقررين</div>${cardPct(state.deprivedExceptTwo.length, 'd2')}</div>
+            <div class="stat-card" title="الشروط:&#13;&#10;• متبقي مقررين فقط للرسوب&#13;&#10;• نسبة الحرمان &#8805; 50% من إجمالي جدولهم">
+                <div class="stat-value val-danger">${depTwoAbove50Count}</div>
+                <div class="stat-label">محروم إلا مقررين</div>
+                <div style="font-size: 0.75rem; color: var(--on-surface-variant); text-align: center; margin-top: 4px; font-weight: bold;">(حرمان يتجاوز 49%)</div>
+            </div>
+            <div class="stat-card" title="الشروط (الحالة الأشد خطورة):&#13;&#10;• متبقي مقررين فقط للرسوب&#13;&#10;• نسبة الحرمان &#8805; 50% من إجمالي جدولهم&#13;&#10;• المقررين المتبقيين يتبعان لنفس المدرب!">
+                <div class="stat-value val-danger">${criticalDepTwoCount}</div>
+                <div class="stat-label">محروم إلا مقررين</div>
+                <div style="font-size: 0.75rem; color: var(--on-surface-variant); text-align: center; margin-top: 4px; font-weight: bold;">(نفس المدرب + تتجاوز 49%)</div>
+            </div>
         </div>`;
 
         html += `<div class="data-table-wrapper" style="border: 2px solid var(--primary);"><table class="data-table">
@@ -777,10 +806,14 @@ const App = (() => {
                 html += `<div class="data-table-wrapper">
                     <div class="dept-header"><i class="bi bi-mortarboard"></i> ${dept} - ${spec} (${trainees.length})</div>
                     <table class="data-table"><thead><tr>
-                        <th>م</th><th>رقم المتدرب</th><th>اسم المتدرب</th><th>رقم الجوال</th><th>التخصص</th><th>القسم</th>
+                        <th>م</th><th>رقم المتدرب</th><th>اسم المتدرب</th><th>رقم الجوال</th><th>التخصص</th><th>القسم</th><th>الحرمان</th>
                     </tr></thead><tbody>`;
                 trainees.forEach((t, i) => {
-                    html += `<tr><td>${i + 1}</td><td>${t.id}</td><td>${t.name}</td><td>${t.phone}</td><td>${t.spec}</td><td>${dept}</td></tr>`;
+                    const _totalC = t.courses.size;
+                    let _depC = 0;
+                    t.courses.forEach(c => { if (c.deprived) _depC++; });
+                    html += `<tr><td>${i + 1}</td><td>${t.id}</td><td>${t.name}</td><td>${t.phone}</td><td>${t.spec}</td><td>${dept}</td>
+                        <td class="dep-ratio-cell"><span class="dep-ratio-num">${_depC}</span> <span class="dep-ratio-sep">/</span> <span class="dep-ratio-den">${_totalC}</span></td></tr>`;
                 });
                 html += '</tbody></table></div>';
             });
@@ -791,12 +824,20 @@ const App = (() => {
     // ===== عرض المحرومين إلا مقرر =====
     function renderDepOne() {
         const filter = document.getElementById('filterDepOne').value;
+        const fiftyBtn = document.getElementById('btnFiftyPercentOne');
+        const applyFiftyPct = fiftyBtn && fiftyBtn.classList.contains('active');
         const c = document.getElementById('depOneContainer');
         let list = state.deprivedExceptOne;
 
         // تجميع حسب قسم المقرر → المدرب
         const grouped = {};
         list.forEach(({ trainee, remainingCourse }) => {
+            if (applyFiftyPct) {
+                const totalC = trainee.courses.size;
+                let depC = 0;
+                trainee.courses.forEach(crs => { if (crs.deprived) depC++; });
+                if (depC / totalC < 0.5) return;
+            }
             const courseDept = getDeptForCourse(remainingCourse);
             if (filter && courseDept !== filter) return;
             const instructor = remainingCourse.instructor || 'غير محدد';
@@ -805,6 +846,7 @@ const App = (() => {
             grouped[key].items.push({ trainee, course: remainingCourse });
         });
 
+        let totalFiltered = 0;
         let html = '';
         if (Object.keys(grouped).length === 0) {
             html = '<div class="alert alert-info text-center"><i class="bi bi-info-circle"></i> لا توجد بيانات</div>';
@@ -815,8 +857,14 @@ const App = (() => {
                 byDept[g.dept].push(g);
             });
             Object.keys(byDept).sort((a, b) => a.localeCompare(b, 'ar')).forEach(dept => {
-                html += `<div class="data-table-wrapper"><div class="dept-header"><i class="bi bi-building"></i> ${dept}</div>`;
+                html += `<div class="data-table-wrapper"><div class="dept-header d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-building"></i> ${dept}</span>
+                    <button class="btn btn-sm btn-success px-3" onclick="App.sendWhatsAppMessage('DepOne', '${dept.replace(/'/g, "\\'")}')" style="box-shadow: 0 4px 6px rgba(25, 135, 84, 0.2); border-radius: 8px;">
+                        <i class="bi bi-whatsapp"></i> إرسال واتساب للقسم
+                    </button>
+                </div>`;
                 byDept[dept].sort((a, b) => a.instructor.localeCompare(b.instructor, 'ar')).forEach(g => {
+                    totalFiltered += g.items.length;
                     html += `<div class="instructor-header"><i class="bi bi-person-badge"></i> المدرب: ${g.instructor} (${g.items.length} متدرب)</div>`;
                     html += `<table class="data-table"><thead><tr>
                         <th>م</th><th>رقم المتدرب</th><th>اسم المتدرب</th><th>رقم الجوال</th><th>التخصص</th>
@@ -837,16 +885,37 @@ const App = (() => {
             });
         }
         c.innerHTML = html;
+
+        const valSpan = document.getElementById('valCountOne');
+        if (valSpan) {
+            valSpan.textContent = totalFiltered;
+            const badge = document.getElementById('badgeCountOne');
+            if (badge) {
+                badge.classList.remove('pop');
+                void badge.offsetWidth; // trigger reflow
+                badge.classList.add('pop');
+            }
+        }
     }
 
     // ===== عرض المحرومين إلا مقررين =====
     function renderDepTwo() {
         const filter = document.getElementById('filterDepTwo').value;
+        const fiftyBtn = document.getElementById('btnFiftyPercentTwo');
+        const applyFiftyPct = fiftyBtn && fiftyBtn.classList.contains('active');
+        const repeatedBtn = document.getElementById('btnRepeatedOnly');
+        const showRepeatedOnly = repeatedBtn && repeatedBtn.classList.contains('active');
         const c = document.getElementById('depTwoContainer');
 
         // كل متدرب يظهر مرتين - مرة لكل مدرب
         const grouped = {};
         state.deprivedExceptTwo.forEach(({ trainee, remainingCourses }) => {
+            if (applyFiftyPct) {
+                const totalC = trainee.courses.size;
+                let depC = 0;
+                trainee.courses.forEach(crs => { if (crs.deprived) depC++; });
+                if (depC / totalC < 0.5) return;
+            }
             remainingCourses.forEach(course => {
                 const courseDept = getDeptForCourse(course);
                 if (filter && courseDept !== filter) return;
@@ -857,6 +926,7 @@ const App = (() => {
             });
         });
 
+        let totalFiltered = 0;
         let html = '';
         if (Object.keys(grouped).length === 0) {
             html = '<div class="alert alert-info text-center"><i class="bi bi-info-circle"></i> لا توجد بيانات</div>';
@@ -866,37 +936,80 @@ const App = (() => {
                 if (!byDept[g.dept]) byDept[g.dept] = [];
                 byDept[g.dept].push(g);
             });
+            let finalHtml = '';
             Object.keys(byDept).sort((a, b) => a.localeCompare(b, 'ar')).forEach(dept => {
-                html += `<div class="data-table-wrapper"><div class="dept-header"><i class="bi bi-building"></i> ${dept}</div>`;
+                let deptHtml = `<div class="data-table-wrapper"><div class="dept-header d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-building"></i> ${dept}</span>
+                    <button class="btn btn-sm btn-success px-3" onclick="App.sendWhatsAppMessage('DepTwo', '${dept.replace(/'/g, "\\'")}')" style="box-shadow: 0 4px 6px rgba(25, 135, 84, 0.2); border-radius: 8px;">
+                        <i class="bi bi-whatsapp"></i> إرسال واتساب للقسم
+                    </button>
+                </div>`;
+                let hasValidContent = false;
                 byDept[dept].sort((a, b) => a.instructor.localeCompare(b.instructor, 'ar')).forEach(g => {
-                    html += `<div class="instructor-header"><i class="bi bi-person-badge"></i> المدرب: ${g.instructor} (${g.items.length} سجل)</div>`;
-                    html += `<table class="data-table"><thead><tr>
+                    const traineeCounts = {};
+                    g.items.forEach(item => {
+                        traineeCounts[item.trainee.id] = (traineeCounts[item.trainee.id] || 0) + 1;
+                    });
+                    
+                    let finalItems = g.items;
+                    if (showRepeatedOnly) {
+                        finalItems = g.items.filter(item => traineeCounts[item.trainee.id] > 1);
+                    }
+                    if (finalItems.length === 0) return;
+
+                    hasValidContent = true;
+                    totalFiltered += new Set(finalItems.map(item => item.trainee.id)).size;
+                    
+                    deptHtml += `<div class="instructor-header"><i class="bi bi-person-badge"></i> المدرب: ${g.instructor} (${finalItems.length} سجل)</div>`;
+                    deptHtml += `<table class="data-table"><thead><tr>
                         <th>م</th><th>رقم المتدرب</th><th>اسم المتدرب</th><th>رقم الجوال</th><th>التخصص</th>
                         <th>الحرمان</th>
                         <th>المقرر</th><th>اسم المقرر</th><th>الرقم المرجعي</th><th>نوع الجدولة</th><th>المدرب</th>
                     </tr></thead><tbody>`;
-                    g.items.forEach((item, i) => {
+                    finalItems.forEach((item, i) => {
                         const _totalC = item.trainee.courses.size;
                         let _depC = 0;
                         item.trainee.courses.forEach(c => { if (c.deprived) _depC++; });
-                        html += `<tr><td>${i + 1}</td><td>${item.trainee.id}</td><td>${item.trainee.name}</td><td>${item.trainee.phone}</td><td>${item.trainee.spec}</td>
+                        const trClass = traineeCounts[item.trainee.id] > 1 ? ' class="highlight-repeated"' : '';
+                        deptHtml += `<tr${trClass}><td>${i + 1}</td><td>${item.trainee.id}</td><td>${item.trainee.name}</td><td>${item.trainee.phone}</td><td>${item.trainee.spec}</td>
                             <td class="dep-ratio-cell"><span class="dep-ratio-num">${_depC}</span> <span class="dep-ratio-sep">/</span> <span class="dep-ratio-den">${_totalC}</span></td>
                             <td>${item.course.code}</td><td>${item.course.name}</td><td>${item.course.ref}</td><td>${item.course.schedule}</td><td>${item.course.instructor}</td></tr>`;
                     });
-                    html += '</tbody></table>';
+                    deptHtml += '</tbody></table>';
                 });
-                html += '</div>';
+                deptHtml += '</div>';
+                if (hasValidContent) {
+                    finalHtml += deptHtml;
+                }
             });
+            html = finalHtml || '<div class="alert alert-info text-center"><i class="bi bi-info-circle"></i> لا توجد بيانات للمشاهدة</div>';
         }
         c.innerHTML = html;
+
+        const valSpan = document.getElementById('valCountTwo');
+        if (valSpan) {
+            valSpan.textContent = totalFiltered;
+            const badge = document.getElementById('badgeCountTwo');
+            if (badge) {
+                badge.classList.remove('pop');
+                void badge.offsetWidth;
+                badge.classList.add('pop');
+            }
+        }
     }
 
     // ===== مساعد: تحديد قسم المقرر =====
     function getDeptForCourse(course) {
         if (course.dept === GENERAL_DEPT) return GENERAL_DEPT;
-        // البحث عن القسم من خلال المدرب أو من خلال الـ mapping
+        
+        // البحث عن القسم من خلال المدرب والتزام تعديلات التخصصات (mapping)
         const inst = state.instructors[course.instructor];
-        if (inst) return inst.dept;
+        if (inst) {
+            if (inst.spec && state.deptSpecMapping[inst.spec]) {
+                return state.deptSpecMapping[inst.spec];
+            }
+            return inst.dept;
+        }
         return course.dept || 'غير محدد';
     }
 
@@ -1084,8 +1197,11 @@ const App = (() => {
         if (chartCanvas && deprivationChartInstance) {
             try {
                 const chartImg = chartCanvas.toDataURL('image/png', 1.0);
-                html += `<div class="print-page" style="display:flex;justify-content:center;align-items:flex-start;padding-top:15mm;">
-                    <img src="${chartImg}" style="max-width:100%;max-height:180mm;object-fit:contain;" alt="مخطط نسب المحرومين">
+                html += `<div class="print-page">
+                    ${buildPrintHeader('المخطط البياني لنسب الحرمان', '', '')}
+                    <div style="display:flex;justify-content:center;align-items:flex-start;padding-top:5mm;">
+                        <img src="${chartImg}" style="max-width:100%;max-height:150mm;object-fit:contain;" alt="مخطط نسب المحرومين">
+                    </div>
                 </div>`;
             } catch (e) {
                 console.warn('تعذر تصدير المخطط للطباعة:', e);
@@ -1129,10 +1245,14 @@ const App = (() => {
                 html += `<div class="print-page">
                     ${buildPrintHeader('(مستمر) المحرومون بجميع المقررات', dept, spec)}
                     <table class="print-table"><thead><tr>
-                        <th>م</th><th>رقم المتدرب</th><th>اسم المتدرب</th><th>رقم الجوال</th><th>التخصص</th><th>القسم</th>
+                        <th>م</th><th>رقم المتدرب</th><th>اسم المتدرب</th><th>رقم الجوال</th><th>التخصص</th><th>القسم</th><th>الحرمان</th>
                     </tr></thead><tbody>`;
                 trainees.forEach((t, i) => {
-                    html += `<tr><td>${i + 1}</td><td>${t.id}</td><td>${t.name}</td><td>${t.phone}</td><td>${t.spec}</td><td>${dept}</td></tr>`;
+                    const _totalC = t.courses.size;
+                    let _depC = 0;
+                    t.courses.forEach(c => { if (c.deprived) _depC++; });
+                    html += `<tr><td>${i + 1}</td><td>${t.id}</td><td>${t.name}</td><td>${t.phone}</td><td>${t.spec}</td><td>${dept}</td>
+                        <td class="dep-ratio-cell"><span class="dep-ratio-num">${_depC}</span> <span class="dep-ratio-sep">/</span> <span class="dep-ratio-den">${_totalC}</span></td></tr>`;
                 });
                 html += '</tbody></table></div>';
             });
@@ -1148,8 +1268,17 @@ const App = (() => {
     function printDepOne() {
         const pa = document.getElementById('printArea');
         const filter = document.getElementById('filterDepOne').value;
+        const fiftyBtn = document.getElementById('btnFiftyPercentOne');
+        const applyFiftyPct = fiftyBtn && fiftyBtn.classList.contains('active');
+        
         const grouped = {};
         state.deprivedExceptOne.forEach(({ trainee, remainingCourse }) => {
+            if (applyFiftyPct) {
+                const totalC = trainee.courses.size;
+                let depC = 0;
+                trainee.courses.forEach(crs => { if (crs.deprived) depC++; });
+                if (depC / totalC < 0.5) return;
+            }
             const courseDept = getDeptForCourse(remainingCourse);
             if (filter && courseDept !== filter) return;
             const instructor = remainingCourse.instructor || 'غير محدد';
@@ -1188,8 +1317,19 @@ const App = (() => {
     function printDepTwo() {
         const pa = document.getElementById('printArea');
         const filter = document.getElementById('filterDepTwo').value;
+        const fiftyBtn = document.getElementById('btnFiftyPercentTwo');
+        const applyFiftyPct = fiftyBtn && fiftyBtn.classList.contains('active');
+        const repeatedBtn = document.getElementById('btnRepeatedOnly');
+        const showRepeatedOnly = repeatedBtn && repeatedBtn.classList.contains('active');
+
         const grouped = {};
         state.deprivedExceptTwo.forEach(({ trainee, remainingCourses }) => {
+            if (applyFiftyPct) {
+                const totalC = trainee.courses.size;
+                let depC = 0;
+                trainee.courses.forEach(crs => { if (crs.deprived) depC++; });
+                if (depC / totalC < 0.5) return;
+            }
             remainingCourses.forEach(course => {
                 const courseDept = getDeptForCourse(course);
                 if (filter && courseDept !== filter) return;
@@ -1201,25 +1341,43 @@ const App = (() => {
         });
 
         let html = '';
+        let printHtml = '';
         Object.keys(grouped).sort((a, b) => a.localeCompare(b, 'ar')).forEach(dept => {
-            html += buildCoverPage('المحرومون بجميع المقررات إلا مقررين', dept);
+            let deptHtml = buildCoverPage('المحرومون بجميع المقررات إلا مقررين', dept);
+            let hasValidContent = false;
             Object.keys(grouped[dept]).sort((a, b) => a.localeCompare(b, 'ar')).forEach(instructor => {
                 const items = grouped[dept][instructor];
-                html += `<div class="print-page">
+                const traineeCounts = {};
+                items.forEach(item => {
+                    traineeCounts[item.trainee.id] = (traineeCounts[item.trainee.id] || 0) + 1;
+                });
+                
+                let finalItems = items;
+                if (showRepeatedOnly) {
+                    finalItems = items.filter(item => traineeCounts[item.trainee.id] > 1);
+                }
+                if (finalItems.length === 0) return;
+
+                hasValidContent = true;
+                deptHtml += `<div class="print-page">
                     ${buildPrintHeader('المحرومون بجميع المقررات إلا مقررين', dept, '')}
                     <div class="print-dept-info">المدرب: ${instructor}</div>
                     <table class="print-table"><thead><tr>
                         <th>م</th><th>رقم المتدرب</th><th>اسم المتدرب</th><th>رقم الجوال</th><th>التخصص</th>
                         <th>المقرر</th><th>اسم المقرر</th><th>الرقم المرجعي</th><th>نوع الجدولة</th>
                     </tr></thead><tbody>`;
-                items.forEach((item, i) => {
-                    html += `<tr><td>${i + 1}</td><td>${item.trainee.id}</td><td>${item.trainee.name}</td><td>${item.trainee.phone}</td><td>${item.trainee.spec}</td>
+                finalItems.forEach((item, i) => {
+                    const trClass = traineeCounts[item.trainee.id] > 1 ? ' class="highlight-repeated"' : '';
+                    deptHtml += `<tr${trClass}><td>${i + 1}</td><td>${item.trainee.id}</td><td>${item.trainee.name}</td><td>${item.trainee.phone}</td><td>${item.trainee.spec}</td>
                         <td>${item.course.code}</td><td>${item.course.name}</td><td>${item.course.ref}</td><td>${item.course.schedule}</td></tr>`;
                 });
-                html += '</tbody></table></div>';
+                deptHtml += '</tbody></table></div>';
             });
+            if (hasValidContent) {
+                printHtml += deptHtml;
+            }
         });
-        pa.innerHTML = html;
+        pa.innerHTML = printHtml || '<div style="text-align: center; padding: 50px;">لا توجد بيانات متوافقة مع الفلاتر المحددة للطباعة</div>';
         const deptNames = Object.keys(grouped).sort((a, b) => a.localeCompare(b, 'ar'));
         const deptLabel = deptNames.length > 2 ? 'جميع الأقسام' : deptNames.join(' و ');
         setPrintTitle('محرومون إلا مقررين', deptLabel);
@@ -1250,10 +1408,22 @@ const App = (() => {
             const specs = state.departments[dept] ? Array.from(state.departments[dept]).sort((a, b) => a.localeCompare(b, 'ar')) : [];
             const isAdded = state.addedDepts.has(dept);
             html += `<div class="dept-column" data-dept="${dept}">`;
-            html += `<div class="dept-column-header">
-                <span><i class="bi bi-building"></i> ${dept}</span>
-                <span class="dept-count">${specs.length}</span>
-                ${isAdded ? `<button class="dept-delete" data-dept="${dept}" title="حذف"><i class="bi bi-trash3"></i></button>` : ''}
+            let safeId = "phoneInput_" + dept.replace(/\W/g, '_');
+            html += `<div class="dept-column-header d-flex flex-column gap-2">
+                <div class="d-flex justify-content-between w-100 align-items-start" style="min-height: 48px;">
+                    <span style="font-weight: 800; font-size: 1rem; line-height: 1.5; padding-top: 2px;">
+                        <i class="bi bi-building"></i> ${dept}
+                    </span>
+                    <div style="white-space: nowrap;">
+                        ${isAdded ? `<button class="dept-delete" data-dept="${dept}" title="حذف"><i class="bi bi-trash3"></i></button>` : ''}
+                    </div>
+                </div>
+                <div class="input-group input-group-sm w-100 mt-1">
+                    <input type="text" id="${safeId}" class="form-control" placeholder="05XXXXXXXX" value="${state.deptPhones[dept] || ''}" style="font-size: 0.85rem; text-align: center;">
+                    <button class="btn btn-outline-success" onclick="App.saveDeptPhone('${dept.replace(/'/g, "\\'")}', document.getElementById('${safeId}').value, this, '${safeId}')" title="حفظ الرقم" style="z-index: 0;">
+                        <i class="bi bi-floppy"></i>
+                    </button>
+                </div>
             </div>`;
             html += `<div class="dept-column-body" data-dept="${dept}">`;
             specs.forEach(spec => {
@@ -1515,6 +1685,7 @@ const App = (() => {
             const settings = {
                 collegeName: state.collegeName,
                 deptSpecMapping: state.deptSpecMapping,
+                deptPhones: state.deptPhones,
                 departments: {},
                 addedDepts: Array.from(state.addedDepts),
                 allKnownSpecs: Array.from(state.allKnownSpecs),
@@ -1634,6 +1805,9 @@ const App = (() => {
                 state.departments[newDept].add(spec);
             });
         }
+        if (savedSettings.deptPhones) {
+            state.deptPhones = savedSettings.deptPhones;
+        }
         // إعادة بناء departments من الإعدادات المحفوظة (استبدال كامل وليس دمج)
         if (savedSettings.departments) {
             Object.entries(savedSettings.departments).forEach(([dept, specs]) => {
@@ -1643,8 +1817,60 @@ const App = (() => {
         }
     }
 
+    // دالة مساعدة لبناء ترويسة الصور المصدرة بنفس تنسيق الطباعة
+    function buildImageExportHeader(title, subtitle) {
+        const reportHijri = state.reportDate ? getHijriDate(new Date(state.reportDate)) : getHijriDate();
+        const college = state.collegeName || 'الكلية التقنية بعنيزة';
+        const sem = state.semester || '';
+        const printHijri = getHijriDate();
+        return `
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 3px double #004226; padding-bottom: 20px; margin-bottom: 30px;">
+            <div style="width: 30%; text-align: center; line-height: 1.6; font-size: 15px; color: #393834;">
+                <div style="font-weight: 800;">المملكة العربية السعودية</div>
+                <div>المؤسسة العامة للتدريب التقني والمهني</div>
+                <div style="font-weight: 800;">${college}</div>
+            </div>
+            <div style="width: 40%; text-align: center;">
+                <img src="${window.LOGO_BASE64 || 'logo.png'}" style="max-height: 85px; object-fit: contain; margin-bottom: 10px;">
+                <h2 style="color: #004226; font-size: 22px; font-weight: 800; margin: 0 0 5px 0;">${title}</h2>
+                ${subtitle ? `<h4 style="color: #775a19; font-size: 17px; font-weight: 700; margin: 0;">${subtitle}</h4>` : ''}
+            </div>
+            <div style="width: 30%; text-align: center; line-height: 1.6; font-size: 15px; color: #393834;">
+                <div style="font-weight: 800;">${sem}</div>
+                <div style="margin-top:4px;"><span style="color:#707972">تاريخ التقرير:</span> <span style="font-weight:700">${reportHijri} هـ</span></div>
+                <div style="font-size:12px;color:#666;margin-top:4px;font-weight:600;">تاريخ الطباعة: ${printHijri} هـ</div>
+            </div>
+        </div>`;
+    }
+
     function clearData() {
-        if (!confirm('هل تريد حذف جميع البيانات والإعدادات المحفوظة؟')) return;
+        let warningMsgs = [];
+        
+        if (state.rawRows && state.rawRows.length > 0) {
+            warningMsgs.push("- بيانات المتدربين المستخرجة من تقرير SF01");
+        }
+        
+        const hasDepts = state.addedDepts && state.addedDepts.size > 0;
+        const hasMapping = state.deptSpecMapping && Object.keys(state.deptSpecMapping).length > 0;
+        if (hasDepts || hasMapping) {
+            warningMsgs.push("- الإعدادات وهيكلة الأقسام التي قمت بتنظيمها");
+        }
+        
+        if (state.deptPhones && Object.keys(state.deptPhones).length > 0) {
+            warningMsgs.push("- أرقام جوالات المدربين ورؤساء الأقسام المخزنة");
+        }
+
+        let fullMessage = "تنبيه: سيتم تصفير النظام والعودة لضبط المصنع بالكامل.\n\n";
+        
+        if (warningMsgs.length > 0) {
+            fullMessage += "البيانات التالية سيتم مسحها نهائياً:\n" + warningMsgs.join("\n") + "\n\n";
+        }
+        
+        fullMessage += "💡 ملاحظة: إذا كنت تود تحديث البيانات بتقرير جديد فقط، يُرجى استخدام أيقونة (الرفع) المجاورة لتحتفظ بإعداداتك الحالية وتحديث التقرير.\n\n";
+        fullMessage += "هل أنت متأكد أنك تريد مسح جميع البيانات؟";
+
+        if (!confirm(fullMessage)) return;
+        
         if (_ageInterval) clearInterval(_ageInterval);
         localStorage.removeItem(STORAGE_KEY);
         localStorage.removeItem(SETTINGS_KEY);
@@ -1792,8 +2018,945 @@ const App = (() => {
         showReportDateUI();
     }
 
+    // تصدير صور فردية للمدربين في ملف مضغوط - إلا مقرر واحد
+    async function exportImagesDepOne() {
+        if (!window.html2canvas || !window.JSZip) {
+            alert('يتم تحميل المكتبات، يرجى الانتظار بضع ثوانٍ والمحاولة مرة أخرى.');
+            return;
+        }
+        
+        const btn = document.querySelector('button[onclick="App.exportImagesDepOne()"]');
+        const oldContent = btn.innerHTML;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> جاري المعالجة...';
+        btn.disabled = true;
+
+        try {
+            const zip = new JSZip();
+            const filter = document.getElementById('filterDepOne').value;
+            const fiftyBtn = document.getElementById('btnFiftyPercentOne');
+            const applyFiftyPct = fiftyBtn && fiftyBtn.classList.contains('active');
+
+            const grouped = {};
+            state.deprivedExceptOne.forEach(({ trainee, remainingCourse }) => {
+                if (applyFiftyPct) {
+                    const totalC = trainee.courses.size;
+                    let depC = 0;
+                    trainee.courses.forEach(crs => { if (crs.deprived) depC++; });
+                    if (depC / totalC < 0.5) return;
+                }
+                const courseDept = getDeptForCourse(remainingCourse);
+                if (filter && courseDept !== filter) return;
+                const instructor = remainingCourse.instructor || 'غير محدد';
+                if (!grouped[courseDept]) grouped[courseDept] = {};
+                if (!grouped[courseDept][instructor]) grouped[courseDept][instructor] = [];
+                grouped[courseDept][instructor].push({ trainee, course: remainingCourse });
+            });
+
+            const container = document.createElement('div');
+            container.style.position = 'absolute';
+            container.style.left = '-9999px';
+            container.style.top = '-9999px';
+            container.style.width = '1200px'; 
+            container.style.background = '#fff';
+            document.body.appendChild(container);
+
+            let hasAnyContent = false;
+            for (const dept of Object.keys(grouped).sort((a, b) => a.localeCompare(b, 'ar'))) {
+                for (const instructor of Object.keys(grouped[dept]).sort((a, b) => a.localeCompare(b, 'ar'))) {
+                    const items = grouped[dept][instructor];
+                    if (items.length === 0) continue;
+                    hasAnyContent = true;
+
+                    let html = `
+                    <div style="padding: 40px; background: #fff; font-family: 'Cairo', sans-serif; direction: rtl;">
+                        ${buildImageExportHeader('المتدربون المحرومون بجميع المقررات إلا مقرر واحد', 'القسم: ' + dept)}
+                        
+                        <div style="background: rgba(26,90,58,0.08); padding: 12px; text-align: center; color: #004226; font-weight: 800; font-size: 16px; margin-bottom: 20px; border-radius: 8px;">المدرب: ${instructor}</div>
+                        
+                        <table style="width: 100%; border-collapse: collapse; font-size: 15px; text-align: center;">
+                            <thead>
+                                <tr style="background: #e6e9e8; color: #004226;">
+                                    <th style="padding: 12px 8px; border-bottom: 2px solid #c0c9c0; font-weight: 800;">م</th>
+                                    <th style="padding: 12px 8px; border-bottom: 2px solid #c0c9c0; font-weight: 800;">رقم المتدرب</th>
+                                    <th style="padding: 12px 8px; border-bottom: 2px solid #c0c9c0; font-weight: 800;">اسم المتدرب</th>
+                                    <th style="padding: 12px 8px; border-bottom: 2px solid #c0c9c0; font-weight: 800;">رقم الجوال</th>
+                                    <th style="padding: 12px 8px; border-bottom: 2px solid #c0c9c0; font-weight: 800;">التخصص</th>
+                                    <th style="padding: 12px 8px; border-bottom: 2px solid #c0c9c0; font-weight: 800;">المقرر</th>
+                                    <th style="padding: 12px 8px; border-bottom: 2px solid #c0c9c0; font-weight: 800;">اسم المقرر</th>
+                                    <th style="padding: 12px 8px; border-bottom: 2px solid #c0c9c0; font-weight: 800;">الرقم المرجعي</th>
+                                    <th style="padding: 12px 8px; border-bottom: 2px solid #c0c9c0; font-weight: 800;">جدولة</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                    `;
+                    items.forEach((item, i) => {
+                        let trBg = (i%2 === 0 ? 'background: #f8faf9;' : 'background: #ffffff;');
+                        html += `<tr style="${trBg} border-bottom: 1px solid #eceeed;">
+                            <td style="padding: 10px 8px; font-weight: 600;">${i+1}</td>
+                            <td style="padding: 10px 8px;">${item.trainee.id}</td>
+                            <td style="padding: 10px 8px; font-weight: 700;">${item.trainee.name}</td>
+                            <td style="padding: 10px 8px;">${item.trainee.phone}</td>
+                            <td style="padding: 10px 8px;">${item.trainee.spec}</td>
+                            <td style="padding: 10px 8px;">${item.course.code}</td>
+                            <td style="padding: 10px 8px; white-space: nowrap;">${item.course.name}</td>
+                            <td style="padding: 10px 8px;">${item.course.ref}</td>
+                            <td style="padding: 10px 8px;">${item.course.schedule}</td>
+                        </tr>`;
+                    });
+                    html += `</tbody></table></div>`;
+                    
+                    container.innerHTML = html;
+                    
+                    const canvas = await html2canvas(container.firstElementChild, {
+                        scale: 2, 
+                        useCORS: true,
+                        logging: false
+                    });
+                    
+                    const imgData = canvas.toDataURL('image/jpeg', 0.9);
+                    const base64Data = imgData.split(',')[1];
+                    const safeInstructor = instructor.replace(/[\\/:*?"<>|]/g, "_");
+                    const safeDept = dept.replace(/[\\/:*?"<>|]/g, "_");
+                    
+                    zip.file(`${safeDept} - ${safeInstructor}.jpg`, base64Data, {base64: true});
+                }
+            }
+
+            document.body.removeChild(container);
+
+            if (!hasAnyContent) {
+                alert('لا توجد بيانات متوافقة مع الفلاتر المحددة لتصديرها كصور.');
+                return;
+            }
+
+            const content = await zip.generateAsync({type:"blob"});
+            const url = URL.createObjectURL(content);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `صور مدربين - محرومين إلا مقرر واحد.zip`;
+            a.click();
+            URL.revokeObjectURL(url);
+            
+        } catch (err) {
+            console.error(err);
+            alert('حدث خطأ أثناء تصدير الصور.');
+        } finally {
+            btn.innerHTML = oldContent;
+            btn.disabled = false;
+        }
+    }
+
+    // تصدير صور فردية للمدربين في ملف مضغوط - إلا مقررين
+    async function exportImagesDepTwo() {
+        if (!window.html2canvas || !window.JSZip) {
+            alert('يتم تحميل المكتبات، يرجى الانتظار بضع ثوانٍ والمحاولة مرة أخرى.');
+            return;
+        }
+        
+        const btn = document.querySelector('button[onclick="App.exportImagesDepTwo()"]');
+        const oldContent = btn.innerHTML;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> جاري المعالجة...';
+        btn.disabled = true;
+
+        try {
+            const zip = new JSZip();
+            const filter = document.getElementById('filterDepTwo').value;
+            const fiftyBtn = document.getElementById('btnFiftyPercentTwo');
+            const applyFiftyPct = fiftyBtn && fiftyBtn.classList.contains('active');
+            const repeatedBtn = document.getElementById('btnRepeatedOnly');
+            const showRepeatedOnly = repeatedBtn && repeatedBtn.classList.contains('active');
+
+            const grouped = {};
+            state.deprivedExceptTwo.forEach(({ trainee, remainingCourses }) => {
+                if (applyFiftyPct) {
+                    const totalC = trainee.courses.size;
+                    let depC = 0;
+                    trainee.courses.forEach(crs => { if (crs.deprived) depC++; });
+                    if (depC / totalC < 0.5) return;
+                }
+                remainingCourses.forEach(course => {
+                    const courseDept = getDeptForCourse(course);
+                    if (filter && courseDept !== filter) return;
+                    const instructor = course.instructor || 'غير محدد';
+                    if (!grouped[courseDept]) grouped[courseDept] = {};
+                    if (!grouped[courseDept][instructor]) grouped[courseDept][instructor] = [];
+                    grouped[courseDept][instructor].push({ trainee, course });
+                });
+            });
+
+            const container = document.createElement('div');
+            container.style.position = 'absolute';
+            container.style.left = '-9999px';
+            container.style.top = '-9999px';
+            container.style.width = '1200px'; 
+            container.style.background = '#fff';
+            document.body.appendChild(container);
+
+            let hasAnyContent = false;
+            for (const dept of Object.keys(grouped).sort((a, b) => a.localeCompare(b, 'ar'))) {
+                for (const instructor of Object.keys(grouped[dept]).sort((a, b) => a.localeCompare(b, 'ar'))) {
+                    const items = grouped[dept][instructor];
+                    const traineeCounts = {};
+                    items.forEach(item => {
+                        traineeCounts[item.trainee.id] = (traineeCounts[item.trainee.id] || 0) + 1;
+                    });
+                    
+                    let finalItems = items;
+                    if (showRepeatedOnly) {
+                        finalItems = items.filter(item => traineeCounts[item.trainee.id] > 1);
+                    }
+                    if (finalItems.length === 0) continue;
+                    hasAnyContent = true;
+
+                    let html = `
+                    <div style="padding: 40px; background: #fff; font-family: 'Cairo', sans-serif; direction: rtl;">
+                        ${buildImageExportHeader('المتدربون المحرومون بجميع المقررات إلا مقررين', 'القسم: ' + dept)}
+                        
+                        <div style="background: rgba(26,90,58,0.08); padding: 12px; text-align: center; color: #004226; font-weight: 800; font-size: 16px; margin-bottom: 20px; border-radius: 8px;">المدرب: ${instructor}</div>
+                        
+                        <table style="width: 100%; border-collapse: collapse; font-size: 15px; text-align: center;">
+                            <thead>
+                                <tr style="background: #e6e9e8; color: #004226;">
+                                    <th style="padding: 12px 8px; border-bottom: 2px solid #c0c9c0; font-weight: 800;">م</th>
+                                    <th style="padding: 12px 8px; border-bottom: 2px solid #c0c9c0; font-weight: 800;">رقم المتدرب</th>
+                                    <th style="padding: 12px 8px; border-bottom: 2px solid #c0c9c0; font-weight: 800;">اسم المتدرب</th>
+                                    <th style="padding: 12px 8px; border-bottom: 2px solid #c0c9c0; font-weight: 800;">رقم الجوال</th>
+                                    <th style="padding: 12px 8px; border-bottom: 2px solid #c0c9c0; font-weight: 800;">التخصص</th>
+                                    <th style="padding: 12px 8px; border-bottom: 2px solid #c0c9c0; font-weight: 800;">المقرر</th>
+                                    <th style="padding: 12px 8px; border-bottom: 2px solid #c0c9c0; font-weight: 800;">اسم المقرر</th>
+                                    <th style="padding: 12px 8px; border-bottom: 2px solid #c0c9c0; font-weight: 800;">الرقم المرجعي</th>
+                                    <th style="padding: 12px 8px; border-bottom: 2px solid #c0c9c0; font-weight: 800;">جدولة</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                    `;
+                    finalItems.forEach((item, i) => {
+                        const isRepeated = traineeCounts[item.trainee.id] > 1;
+                        let trBg = isRepeated ? 'background: rgba(186,26,26,0.1);' : (i%2 === 0 ? 'background: #f8faf9;' : 'background: #ffffff;');
+                        html += `<tr style="${trBg} border-bottom: 1px solid #eceeed;">
+                            <td style="padding: 10px 8px; font-weight: 600;">${i+1}</td>
+                            <td style="padding: 10px 8px;">${item.trainee.id}</td>
+                            <td style="padding: 10px 8px; font-weight: 700;">${item.trainee.name}</td>
+                            <td style="padding: 10px 8px;">${item.trainee.phone}</td>
+                            <td style="padding: 10px 8px;">${item.trainee.spec}</td>
+                            <td style="padding: 10px 8px;">${item.course.code}</td>
+                            <td style="padding: 10px 8px; white-space: nowrap;">${item.course.name}</td>
+                            <td style="padding: 10px 8px;">${item.course.ref}</td>
+                            <td style="padding: 10px 8px;">${item.course.schedule}</td>
+                        </tr>`;
+                    });
+                    html += `</tbody></table></div>`;
+                    
+                    container.innerHTML = html;
+                    
+                    const canvas = await html2canvas(container.firstElementChild, {
+                        scale: 2, 
+                        useCORS: true,
+                        logging: false
+                    });
+                    
+                    const imgData = canvas.toDataURL('image/jpeg', 0.9);
+                    const base64Data = imgData.split(',')[1];
+                    const safeInstructor = instructor.replace(/[\\/:*?"<>|]/g, "_");
+                    const safeDept = dept.replace(/[\\/:*?"<>|]/g, "_");
+                    
+                    zip.file(`${safeDept} - ${safeInstructor}.jpg`, base64Data, {base64: true});
+                }
+            }
+
+            document.body.removeChild(container);
+
+            if (!hasAnyContent) {
+                alert('لا توجد بيانات متوافقة مع الفلاتر المحددة لتصديرها كصور.');
+                return;
+            }
+
+            const content = await zip.generateAsync({type:"blob"});
+            const url = URL.createObjectURL(content);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `صور مدربين - محرومين إلا مقررين.zip`;
+            a.click();
+            URL.revokeObjectURL(url);
+            
+        } catch (err) {
+            console.error(err);
+            alert('حدث خطأ أثناء تصدير الصور.');
+        } finally {
+            btn.innerHTML = oldContent;
+            btn.disabled = false;
+        }
+    }
+
+    // تصدير الشامل لجميع الصور في ملف مضغوط واحد
+    async function exportAllImagesGlobal() {
+        if (!window.html2canvas || !window.JSZip || Object.keys(state.trainees).length === 0) {
+            alert('يرجى تحميل ملف بيانات أولاً والانتظار حتى تجهز المكتبات.');
+            return;
+        }
+
+        const btn = document.getElementById('btnGlobalExport');
+        const oldContent = btn.innerHTML;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> جاري التصدير...';
+        btn.disabled = true;
+
+        try {
+            const zip = new JSZip();
+            let hasAnyContent = false;
+
+            const container = document.createElement('div');
+            container.style.position = 'absolute';
+            container.style.left = '-9999px';
+            container.style.top = '-9999px';
+            container.style.width = '1200px'; 
+            container.style.background = '#fff';
+            document.body.appendChild(container);
+
+            // ==========================================
+            // 1. (مستمر) محرومون بجميع المقررات
+            // ==========================================
+            if (state.deprivedAll.length > 0) {
+                const groupedAll = {};
+                state.deprivedAll.forEach(t => {
+                    const spec = t.spec || 'غير محدد';
+                    if (!groupedAll[spec]) groupedAll[spec] = [];
+                    groupedAll[spec].push(t);
+                });
+
+                let htmlAll = `
+                <div style="padding: 40px; background: #fff; font-family: 'Cairo', sans-serif; direction: rtl;">
+                    ${buildImageExportHeader('(مستمر) محرومون بجميع المقررات', '')}
+                `;
+
+                Object.keys(groupedAll).sort((a, b) => a.localeCompare(b, 'ar')).forEach(spec => {
+                    const trainees = groupedAll[spec];
+                    const dept = state.deptSpecMapping[spec] || trainees[0]?.dept || '';
+                    htmlAll += `
+                    <div style="background: rgba(26,90,58,0.08); padding: 12px; color: #004226; font-weight: 800; font-size: 16px; margin-bottom: 10px; margin-top: 20px; border-radius: 8px;">القسم: ${dept} - التخصص: ${spec} (${trainees.length})</div>
+                    <table style="width: 100%; border-collapse: collapse; font-size: 15px; text-align: center;">
+                        <thead>
+                            <tr style="background: #e6e9e8; color: #004226;">
+                                <th style="padding: 10px; border-bottom: 2px solid #c0c9c0;">م</th>
+                                <th style="padding: 10px; border-bottom: 2px solid #c0c9c0;">رقم المتدرب</th>
+                                <th style="padding: 10px; border-bottom: 2px solid #c0c9c0;">اسم المتدرب</th>
+                                <th style="padding: 10px; border-bottom: 2px solid #c0c9c0;">رقم الجوال</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                    `;
+                    trainees.forEach((t, i) => {
+                        let trBg = (i%2 === 0 ? 'background: #f8faf9;' : 'background: #ffffff;');
+                        htmlAll += `<tr style="${trBg} border-bottom: 1px solid #eceeed;">
+                            <td style="padding: 8px; font-weight: 600;">${i+1}</td>
+                            <td style="padding: 8px;">${t.id}</td>
+                            <td style="padding: 8px; font-weight: 700;">${t.name}</td>
+                            <td style="padding: 8px;">${t.phone}</td>
+                        </tr>`;
+                    });
+                    htmlAll += `</tbody></table>`;
+                });
+                htmlAll += `</div>`;
+                
+                container.innerHTML = htmlAll;
+                const canvas = await html2canvas(container.firstElementChild, { scale: 2, useCORS: true, logging: false });
+                zip.file(`وكالة شؤون المتدربين - محرومين بالكل.jpg`, canvas.toDataURL('image/jpeg', 0.9).split(',')[1], {base64: true});
+                hasAnyContent = true;
+            }
+
+            // ==========================================
+            // 2. محرومون إلا مقرر واحد (Default: 50% Active)
+            // ==========================================
+            const groupedOne = {};
+            state.deprivedExceptOne.forEach(({ trainee, remainingCourse }) => {
+                const totalC = trainee.courses.size;
+                let depC = 0;
+                trainee.courses.forEach(crs => { if (crs.deprived) depC++; });
+                if (depC / totalC < 0.5) return; // تطبيق 50 افتراضي
+
+                const courseDept = getDeptForCourse(remainingCourse);
+                const instructor = remainingCourse.instructor || 'غير محدد';
+                if (!groupedOne[courseDept]) groupedOne[courseDept] = {};
+                if (!groupedOne[courseDept][instructor]) groupedOne[courseDept][instructor] = [];
+                groupedOne[courseDept][instructor].push({ trainee, course: remainingCourse });
+            });
+
+            for (const dept of Object.keys(groupedOne)) {
+                for (const instructor of Object.keys(groupedOne[dept])) {
+                    const items = groupedOne[dept][instructor];
+                    if (items.length === 0) continue;
+                    
+                    let html = `
+                    <div style="padding: 40px; background: #fff; font-family: 'Cairo', sans-serif; direction: rtl;">
+                        ${buildImageExportHeader('المتدربون المحرومون بجميع المقررات إلا مقرر واحد', 'القسم: ' + dept)}
+                        <div style="background: rgba(26,90,58,0.08); padding: 12px; text-align: center; color: #004226; font-weight: 800; font-size: 16px; margin-bottom: 20px; border-radius: 8px;">المدرب: ${instructor}</div>
+                        <table style="width: 100%; border-collapse: collapse; font-size: 15px; text-align: center;">
+                            <thead>
+                                <tr style="background: #e6e9e8; color: #004226;">
+                                    <th style="padding: 12px 8px; border-bottom: 2px solid #c0c9c0; font-weight: 800;">م</th>
+                                    <th style="padding: 12px 8px; border-bottom: 2px solid #c0c9c0; font-weight: 800;">رقم المتدرب</th>
+                                    <th style="padding: 12px 8px; border-bottom: 2px solid #c0c9c0; font-weight: 800;">اسم المتدرب</th>
+                                    <th style="padding: 12px 8px; border-bottom: 2px solid #c0c9c0; font-weight: 800;">التخصص</th>
+                                    <th style="padding: 12px 8px; border-bottom: 2px solid #c0c9c0; font-weight: 800;">المقرر</th>
+                                    <th style="padding: 12px 8px; border-bottom: 2px solid #c0c9c0; font-weight: 800;">جدولة</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                    `;
+                    items.forEach((item, i) => {
+                        let trBg = (i%2 === 0 ? 'background: #f8faf9;' : 'background: #ffffff;');
+                        html += `<tr style="${trBg} border-bottom: 1px solid #eceeed;">
+                            <td style="padding: 10px 8px; font-weight: 600;">${i+1}</td>
+                            <td style="padding: 10px 8px;">${item.trainee.id}</td>
+                            <td style="padding: 10px 8px; font-weight: 700;">${item.trainee.name}</td>
+                            <td style="padding: 10px 8px;">${item.trainee.spec}</td>
+                            <td style="padding: 10px 8px;">${item.course.name}</td>
+                            <td style="padding: 10px 8px;">${item.course.schedule}</td>
+                        </tr>`;
+                    });
+                    html += `</tbody></table></div>`;
+                    
+                    container.innerHTML = html;
+                    const canvas = await html2canvas(container.firstElementChild, { scale: 2, useCORS: true, logging: false });
+                    const safeInstructor = instructor.replace(/[\\/:*?"<>|]/g, "_");
+                    const safeDept = dept.replace(/[\\/:*?"<>|]/g, "_");
+                    zip.file(`محرومون إلا مقرر/${safeDept} - ${safeInstructor}.jpg`, canvas.toDataURL('image/jpeg', 0.9).split(',')[1], {base64: true});
+                    hasAnyContent = true;
+                }
+            }
+
+            // ==========================================
+            // 3. محرومون إلا مقررين (Default: 50% Active, Repeated Only Active)
+            // ==========================================
+            const groupedTwo = {};
+            state.deprivedExceptTwo.forEach(({ trainee, remainingCourses }) => {
+                const totalC = trainee.courses.size;
+                let depC = 0;
+                trainee.courses.forEach(crs => { if (crs.deprived) depC++; });
+                if (depC / totalC < 0.5) return; // 50% افتراضي
+
+                remainingCourses.forEach(course => {
+                    const courseDept = getDeptForCourse(course);
+                    const instructor = course.instructor || 'غير محدد';
+                    if (!groupedTwo[courseDept]) groupedTwo[courseDept] = {};
+                    if (!groupedTwo[courseDept][instructor]) groupedTwo[courseDept][instructor] = [];
+                    groupedTwo[courseDept][instructor].push({ trainee, course });
+                });
+            });
+
+            for (const dept of Object.keys(groupedTwo)) {
+                for (const instructor of Object.keys(groupedTwo[dept])) {
+                    const items = groupedTwo[dept][instructor];
+                    const traineeCounts = {};
+                    items.forEach(item => {
+                        traineeCounts[item.trainee.id] = (traineeCounts[item.trainee.id] || 0) + 1;
+                    });
+                    
+                    // مكررون فقط افتراضي
+                    const finalItems = items.filter(item => traineeCounts[item.trainee.id] > 1);
+                    if (finalItems.length === 0) continue;
+
+                    let html = `
+                    <div style="padding: 40px; background: #fff; font-family: 'Cairo', sans-serif; direction: rtl;">
+                        ${buildImageExportHeader('المتدربون المحرومون بجميع المقررات إلا مقررين', 'القسم: ' + dept)}
+                        <div style="background: rgba(26,90,58,0.08); padding: 12px; text-align: center; color: #004226; font-weight: 800; font-size: 16px; margin-bottom: 20px; border-radius: 8px;">المدرب: ${instructor}</div>
+                        <table style="width: 100%; border-collapse: collapse; font-size: 15px; text-align: center;">
+                            <thead>
+                                <tr style="background: #e6e9e8; color: #004226;">
+                                    <th style="padding: 12px 8px; border-bottom: 2px solid #c0c9c0; font-weight: 800;">م</th>
+                                    <th style="padding: 12px 8px; border-bottom: 2px solid #c0c9c0; font-weight: 800;">رقم المتدرب</th>
+                                    <th style="padding: 12px 8px; border-bottom: 2px solid #c0c9c0; font-weight: 800;">اسم المتدرب</th>
+                                    <th style="padding: 12px 8px; border-bottom: 2px solid #c0c9c0; font-weight: 800;">التخصص</th>
+                                    <th style="padding: 12px 8px; border-bottom: 2px solid #c0c9c0; font-weight: 800;">المقرر</th>
+                                    <th style="padding: 12px 8px; border-bottom: 2px solid #c0c9c0; font-weight: 800;">جدولة</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                    `;
+                    finalItems.forEach((item, i) => {
+                        let trBg = 'background: rgba(186,26,26,0.1);'; // Because they are all repeated
+                        html += `<tr style="${trBg} border-bottom: 1px solid #eceeed;">
+                            <td style="padding: 10px 8px; font-weight: 600;">${i+1}</td>
+                            <td style="padding: 10px 8px;">${item.trainee.id}</td>
+                            <td style="padding: 10px 8px; font-weight: 700;">${item.trainee.name}</td>
+                            <td style="padding: 10px 8px;">${item.trainee.spec}</td>
+                            <td style="padding: 10px 8px;">${item.course.name}</td>
+                            <td style="padding: 10px 8px;">${item.course.schedule}</td>
+                        </tr>`;
+                    });
+                    html += `</tbody></table></div>`;
+                    
+                    container.innerHTML = html;
+                    const canvas = await html2canvas(container.firstElementChild, { scale: 2, useCORS: true, logging: false });
+                    const safeInstructor = instructor.replace(/[\\/:*?"<>|]/g, "_");
+                    const safeDept = dept.replace(/[\\/:*?"<>|]/g, "_");
+                    zip.file(`محرومون إلا مقررين/${safeDept} - ${safeInstructor}.jpg`, canvas.toDataURL('image/jpeg', 0.9).split(',')[1], {base64: true});
+                    hasAnyContent = true;
+                }
+            }
+
+            document.body.removeChild(container);
+
+            if (!hasAnyContent) {
+                alert('لا يوجد أي بيانات متوافقة للتصدير.');
+                return;
+            }
+
+            const content = await zip.generateAsync({type:"blob"});
+            const url = URL.createObjectURL(content);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `حزمة صور المدربين الشاملة.zip`;
+            a.click();
+            URL.revokeObjectURL(url);
+            
+        } catch (err) {
+            console.error(err);
+            alert('حدث خطأ أثناء تصدير الصور الشامل.');
+        } finally {
+            btn.innerHTML = oldContent;
+            btn.disabled = false;
+        }
+    }
+
+    // --- توليد الإيميلات (EML) ---
+    function utf8ToBase64(str) {
+        return btoa(unescape(encodeURIComponent(str)));
+    }
+
+    function createEmlContent(base64Image, instructorName, deptName, tabName) {
+        const boundary = "----=_NextPart_" + Date.now().toString(16);
+        const subject = `تنبيه حرمان (${tabName}) - ${deptName}${instructorName ? ' - ' + instructorName : ''}`;
+        const encodedSubject = `=?utf-8?B?${utf8ToBase64(subject)}?=`;
+
+        let greeting = instructorName ? `سعادة المدرب المحترم/ <span style="color:#004226;font-weight:bold;">${instructorName}</span>،` : `السادة الكرام،`;
+        const htmlBody = `
+            <html dir="rtl" lang="ar">
+            <head>
+                <meta charset="utf-8">
+            </head>
+            <body style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; font-size: 14pt; color: #333; line-height: 1.6;">
+                <p>${greeting}</p>
+                <p>السلام عليكم ورحمة الله وبركاته،</p>
+                <p>نُرفق لكم في هذا البريد صورة إحصائية توضح تفاصيل المتدربين ضمن متابعة الحرمان لتبويب: <strong style="color: #ba1a1a;">${tabName}</strong>.</p>
+                <p>يرجى التكرم بالاطلاع والمتابعة.</p>
+                <br>
+                <p>مع أطيب التحيات،<br><b style="color: #0f6c44;">وكالة شؤون المتدربين - ${state.collegeName || 'الكلية التقنية بعنيزة'}</b></p>
+            </body>
+            </html>
+        `;
+
+        const encodedBody = utf8ToBase64(htmlBody);
+        const chunkedImage = base64Image.match(/.{1,76}/g).join('\r\n');
+
+        return [
+            `MIME-Version: 1.0`,
+            `Subject: ${encodedSubject}`,
+            `Content-Type: multipart/mixed; boundary="${boundary}"`,
+            ``,
+            `--${boundary}`,
+            `Content-Type: text/html; charset="UTF-8"`,
+            `Content-Transfer-Encoding: base64`,
+            ``,
+            encodedBody,
+            ``,
+            `--${boundary}`,
+            `Content-Type: image/jpeg; name="report.jpg"`,
+            `Content-Transfer-Encoding: base64`,
+            `Content-Disposition: attachment; filename="report.jpg"`,
+            ``,
+            chunkedImage,
+            `--${boundary}--`
+        ].join('\r\n');
+    }
+
+    async function exportAllEmailsGlobal() {
+        if (!window.html2canvas || !window.JSZip || Object.keys(state.trainees).length === 0) {
+            alert('يرجى تحميل ملف بيانات أولاً والانتظار حتى تجهز المكتبات.');
+            return;
+        }
+
+        const btn = document.getElementById('btnGlobalEmail');
+        const oldContent = btn.innerHTML;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> جاري التصدير...';
+        btn.disabled = true;
+
+        try {
+            const zip = new JSZip();
+            let hasAnyContent = false;
+
+            const container = document.createElement('div');
+            container.style.position = 'absolute';
+            container.style.left = '-9999px';
+            container.style.top = '-9999px';
+            container.style.width = '1200px'; 
+            container.style.background = '#fff';
+            document.body.appendChild(container);
+
+            // 1. محرومون بجميع المقررات
+            if (state.deprivedAll.length > 0) {
+                const groupedAll = {};
+                state.deprivedAll.forEach(t => {
+                    const spec = t.spec || 'غير محدد';
+                    if (!groupedAll[spec]) groupedAll[spec] = [];
+                    groupedAll[spec].push(t);
+                });
+
+                let htmlAll = `
+                <div style="padding: 40px; background: #fff; font-family: 'Cairo', sans-serif; direction: rtl;">
+                    ${buildImageExportHeader('(مستمر) محرومون بجميع المقررات', '')}
+                `;
+
+                Object.keys(groupedAll).sort((a, b) => a.localeCompare(b, 'ar')).forEach(spec => {
+                    const trainees = groupedAll[spec];
+                    const dept = state.deptSpecMapping[spec] || trainees[0]?.dept || '';
+                    htmlAll += `
+                    <div style="background: rgba(26,90,58,0.08); padding: 12px; color: #004226; font-weight: 800; font-size: 16px; margin-bottom: 10px; margin-top: 20px; border-radius: 8px;">القسم: ${dept} - التخصص: ${spec} (${trainees.length})</div>
+                    <table style="width: 100%; border-collapse: collapse; font-size: 15px; text-align: center;">
+                        <thead>
+                            <tr style="background: #e6e9e8; color: #004226;">
+                                <th style="padding: 10px; border-bottom: 2px solid #c0c9c0;">م</th>
+                                <th style="padding: 10px; border-bottom: 2px solid #c0c9c0;">رقم المتدرب</th>
+                                <th style="padding: 10px; border-bottom: 2px solid #c0c9c0;">اسم المتدرب</th>
+                                <th style="padding: 10px; border-bottom: 2px solid #c0c9c0;">رقم الجوال</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                    `;
+                    trainees.forEach((t, i) => {
+                        let trBg = (i%2 === 0 ? 'background: #f8faf9;' : 'background: #ffffff;');
+                        htmlAll += `<tr style="${trBg} border-bottom: 1px solid #eceeed;">
+                            <td style="padding: 8px; font-weight: 600;">${i+1}</td>
+                            <td style="padding: 8px;">${t.id}</td>
+                            <td style="padding: 8px; font-weight: 700;">${t.name}</td>
+                            <td style="padding: 8px;">${t.phone}</td>
+                        </tr>`;
+                    });
+                    htmlAll += `</tbody></table>`;
+                });
+                htmlAll += `</div>`;
+                
+                container.innerHTML = htmlAll;
+                const canvas = await html2canvas(container.firstElementChild, { scale: 2, useCORS: true, logging: false });
+                const b64 = canvas.toDataURL('image/jpeg', 0.9).split(',')[1];
+                const eml = createEmlContent(b64, '', 'جميع الأقسام', 'مستمر محرومون بالكل');
+                zip.file(`وكالة شؤون المتدربين - محرومين بالكل.eml`, eml);
+                hasAnyContent = true;
+            }
+
+            // 2. محرومون إلا مقرر واحد
+            const groupedOne = {};
+            state.deprivedExceptOne.forEach(({ trainee, remainingCourse }) => {
+                const totalC = trainee.courses.size;
+                let depC = 0;
+                trainee.courses.forEach(crs => { if (crs.deprived) depC++; });
+                if (depC / totalC < 0.5) return;
+
+                const courseDept = getDeptForCourse(remainingCourse);
+                const instructor = remainingCourse.instructor || 'غير محدد';
+                if (!groupedOne[courseDept]) groupedOne[courseDept] = {};
+                if (!groupedOne[courseDept][instructor]) groupedOne[courseDept][instructor] = [];
+                groupedOne[courseDept][instructor].push({ trainee, course: remainingCourse });
+            });
+
+            for (const dept of Object.keys(groupedOne)) {
+                for (const instructor of Object.keys(groupedOne[dept])) {
+                    const items = groupedOne[dept][instructor];
+                    if (items.length === 0) continue;
+                    
+                    let html = `
+                    <div style="padding: 40px; background: #fff; font-family: 'Cairo', sans-serif; direction: rtl;">
+                        ${buildImageExportHeader('المتدربون المحرومون بجميع المقررات إلا مقرر واحد', 'القسم: ' + dept)}
+                        <div style="background: rgba(26,90,58,0.08); padding: 12px; text-align: center; color: #004226; font-weight: 800; font-size: 16px; margin-bottom: 20px; border-radius: 8px;">المدرب: ${instructor}</div>
+                        <table style="width: 100%; border-collapse: collapse; font-size: 15px; text-align: center;">
+                            <thead>
+                                <tr style="background: #e6e9e8; color: #004226;">
+                                    <th style="padding: 12px 8px; border-bottom: 2px solid #c0c9c0; font-weight: 800;">م</th>
+                                    <th style="padding: 12px 8px; border-bottom: 2px solid #c0c9c0; font-weight: 800;">رقم المتدرب</th>
+                                    <th style="padding: 12px 8px; border-bottom: 2px solid #c0c9c0; font-weight: 800;">اسم المتدرب</th>
+                                    <th style="padding: 12px 8px; border-bottom: 2px solid #c0c9c0; font-weight: 800;">التخصص</th>
+                                    <th style="padding: 12px 8px; border-bottom: 2px solid #c0c9c0; font-weight: 800;">المقرر</th>
+                                    <th style="padding: 12px 8px; border-bottom: 2px solid #c0c9c0; font-weight: 800;">جدولة</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                    `;
+                    items.forEach((item, i) => {
+                        let trBg = (i%2 === 0 ? 'background: #f8faf9;' : 'background: #ffffff;');
+                        html += `<tr style="${trBg} border-bottom: 1px solid #eceeed;">
+                            <td style="padding: 10px 8px; font-weight: 600;">${i+1}</td>
+                            <td style="padding: 10px 8px;">${item.trainee.id}</td>
+                            <td style="padding: 10px 8px; font-weight: 700;">${item.trainee.name}</td>
+                            <td style="padding: 10px 8px;">${item.trainee.spec}</td>
+                            <td style="padding: 10px 8px;">${item.course.name}</td>
+                            <td style="padding: 10px 8px;">${item.course.schedule}</td>
+                        </tr>`;
+                    });
+                    html += `</tbody></table></div>`;
+                    
+                    container.innerHTML = html;
+                    const canvas = await html2canvas(container.firstElementChild, { scale: 2, useCORS: true, logging: false });
+                    const b64 = canvas.toDataURL('image/jpeg', 0.9).split(',')[1];
+                    const eml = createEmlContent(b64, instructor, dept, 'محرومون إلا مقرر واحد');
+                    
+                    const safeInstructor = instructor.replace(/[\\/:*?"<>|]/g, "_");
+                    const safeDept = dept.replace(/[\\/:*?"<>|]/g, "_");
+                    zip.file(`محرومون إلا مقرر/${safeDept} - ${safeInstructor}.eml`, eml);
+                    hasAnyContent = true;
+                }
+            }
+
+            // 3. محرومون إلا مقررين
+            const groupedTwo = {};
+            state.deprivedExceptTwo.forEach(({ trainee, remainingCourses }) => {
+                const totalC = trainee.courses.size;
+                let depC = 0;
+                trainee.courses.forEach(crs => { if (crs.deprived) depC++; });
+                if (depC / totalC < 0.5) return;
+
+                remainingCourses.forEach(course => {
+                    const courseDept = getDeptForCourse(course);
+                    const instructor = course.instructor || 'غير محدد';
+                    if (!groupedTwo[courseDept]) groupedTwo[courseDept] = {};
+                    if (!groupedTwo[courseDept][instructor]) groupedTwo[courseDept][instructor] = [];
+                    groupedTwo[courseDept][instructor].push({ trainee, course });
+                });
+            });
+
+            for (const dept of Object.keys(groupedTwo)) {
+                for (const instructor of Object.keys(groupedTwo[dept])) {
+                    const items = groupedTwo[dept][instructor];
+                    const traineeCounts = {};
+                    items.forEach(item => {
+                        traineeCounts[item.trainee.id] = (traineeCounts[item.trainee.id] || 0) + 1;
+                    });
+                    
+                    const finalItems = items.filter(item => traineeCounts[item.trainee.id] > 1);
+                    if (finalItems.length === 0) continue;
+
+                    let html = `
+                    <div style="padding: 40px; background: #fff; font-family: 'Cairo', sans-serif; direction: rtl;">
+                        ${buildImageExportHeader('المتدربون المحرومون بجميع المقررات إلا مقررين', 'القسم: ' + dept)}
+                        <div style="background: rgba(26,90,58,0.08); padding: 12px; text-align: center; color: #004226; font-weight: 800; font-size: 16px; margin-bottom: 20px; border-radius: 8px;">المدرب: ${instructor}</div>
+                        <table style="width: 100%; border-collapse: collapse; font-size: 15px; text-align: center;">
+                            <thead>
+                                <tr style="background: #e6e9e8; color: #004226;">
+                                    <th style="padding: 12px 8px; border-bottom: 2px solid #c0c9c0; font-weight: 800;">م</th>
+                                    <th style="padding: 12px 8px; border-bottom: 2px solid #c0c9c0; font-weight: 800;">رقم المتدرب</th>
+                                    <th style="padding: 12px 8px; border-bottom: 2px solid #c0c9c0; font-weight: 800;">اسم المتدرب</th>
+                                    <th style="padding: 12px 8px; border-bottom: 2px solid #c0c9c0; font-weight: 800;">التخصص</th>
+                                    <th style="padding: 12px 8px; border-bottom: 2px solid #c0c9c0; font-weight: 800;">المقرر</th>
+                                    <th style="padding: 12px 8px; border-bottom: 2px solid #c0c9c0; font-weight: 800;">جدولة</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                    `;
+                    finalItems.forEach((item, i) => {
+                        let trBg = 'background: rgba(186,26,26,0.1);';
+                        html += `<tr style="${trBg} border-bottom: 1px solid #eceeed;">
+                            <td style="padding: 10px 8px; font-weight: 600;">${i+1}</td>
+                            <td style="padding: 10px 8px;">${item.trainee.id}</td>
+                            <td style="padding: 10px 8px; font-weight: 700;">${item.trainee.name}</td>
+                            <td style="padding: 10px 8px;">${item.trainee.spec}</td>
+                            <td style="padding: 10px 8px;">${item.course.name}</td>
+                            <td style="padding: 10px 8px;">${item.course.schedule}</td>
+                        </tr>`;
+                    });
+                    html += `</tbody></table></div>`;
+                    
+                    container.innerHTML = html;
+                    const canvas = await html2canvas(container.firstElementChild, { scale: 2, useCORS: true, logging: false });
+                    const b64 = canvas.toDataURL('image/jpeg', 0.9).split(',')[1];
+                    const eml = createEmlContent(b64, instructor, dept, 'محرومون إلا مقررين');
+                    
+                    const safeInstructor = instructor.replace(/[\\/:*?"<>|]/g, "_");
+                    const safeDept = dept.replace(/[\\/:*?"<>|]/g, "_");
+                    zip.file(`محرومون إلا مقررين/${safeDept} - ${safeInstructor}.eml`, eml);
+                    hasAnyContent = true;
+                }
+            }
+
+            document.body.removeChild(container);
+
+            if (!hasAnyContent) {
+                alert('لا يوجد أي بيانات متوافقة للتصدير.');
+                return;
+            }
+
+            const content = await zip.generateAsync({type:"blob"});
+            const url = URL.createObjectURL(content);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = `حزمة إيميلات المدربين الجاهزة.zip`;
+            a.click();
+            URL.revokeObjectURL(url);
+            
+        } catch (err) {
+            console.error(err);
+            alert('حدث خطأ أثناء تصدير الإيميلات الشاملة.');
+        } finally {
+            btn.innerHTML = oldContent;
+            btn.disabled = false;
+        }
+    }
+
+    // تفعيل / تعطيل خيار الـ 50%
+    function toggleFiftyPct(tabType) {
+        const btn = document.getElementById(`btnFiftyPercent${tabType}`);
+        if (btn) {
+            btn.classList.toggle('active');
+            if (tabType === 'One') renderDepOne();
+            else if (tabType === 'Two') renderDepTwo();
+        }
+    }
+
+    function toggleRepeatedOnly() {
+        const btn = document.getElementById('btnRepeatedOnly');
+        if (btn) {
+            btn.classList.toggle('active');
+            renderDepTwo();
+        }
+    }
+
     // ===== التشغيل =====
     document.addEventListener('DOMContentLoaded', init);
+
+    // --- حفظ رقم جوال القسم للواتساب ---
+    function saveDeptPhone(dept, val, btnElement, inputId) {
+        val = val.trim();
+        let digits = val.replace(/\D/g, '');
+        
+        // توحيد الصيغة إلى 05XXXXXXX أو ما يعادلها
+        if (digits.startsWith('9665') || digits.startsWith('9661')) {
+            digits = '0' + digits.substring(3);
+        } else if (digits.startsWith('5')) {
+            digits = '0' + digits;
+        }
+
+        if (digits.length > 0 && digits.length < 9) {
+            alert('رقم الجوال يبدو ناقصاً، تأكد من إدخال رقم صحيح.');
+            return;
+        }
+
+        state.deptPhones[dept] = digits;
+        saveToStorage();
+
+        // تحديث الحقل البصري ليظهر الرقم الموحد
+        if (inputId) {
+            const inputEl = document.getElementById(inputId);
+            if (inputEl) inputEl.value = digits;
+        }
+
+        // تأثير بصري للحفظ
+        if (btnElement) {
+            const originalHtml = btnElement.innerHTML;
+            btnElement.innerHTML = '<i class="bi bi-check-lg"></i>';
+            btnElement.classList.remove('btn-outline-success');
+            btnElement.classList.add('btn-success');
+            btnElement.style.color = '#fff';
+            setTimeout(() => {
+                btnElement.innerHTML = originalHtml;
+                btnElement.classList.remove('btn-success');
+                btnElement.classList.add('btn-outline-success');
+                btnElement.style.color = '';
+            }, 1500);
+        }
+    }
+
+    // --- إرسال الواتساب للمدربين في القسم ---
+    function sendWhatsAppMessage(tabType, dept) {
+        let phone = (state.deptPhones[dept] || '').replace(/\D/g, '');
+        if (!phone) {
+            alert('الرجاء الانتقال لتبويب (تنظيم الأقسام) وإدخال رقم جوال رئيس هذا القسم أولاً.');
+            return;
+        }
+        
+        // تحويل تلقائي للصيغة السعودية الدولية للواتساب
+        if (phone.startsWith('0')) {
+            phone = '966' + phone.substring(1);
+        }
+
+        const semName = state.semester || 'الفصل الحالي';
+        let msg = `*إحصائية الحرمان - ${dept}*\n${semName}\n\n======================\n`;
+
+        const grouped = {};
+        if (tabType === 'DepOne') {
+            const applyFiftyPct = document.getElementById('btnFiftyPercentOne')?.classList.contains('active');
+            state.deprivedExceptOne.forEach(({ trainee, remainingCourse }) => {
+                if (applyFiftyPct) {
+                    const totalC = trainee.courses.size;
+                    let depC = 0;
+                    trainee.courses.forEach(crs => { if (crs.deprived) depC++; });
+                    if (depC / totalC < 0.5) return;
+                }
+                const cDept = getDeptForCourse(remainingCourse);
+                if (cDept === dept) {
+                    const inst = remainingCourse.instructor || 'غير محدد';
+                    if (!grouped[inst]) grouped[inst] = [];
+                    grouped[inst].push({ trainee, course: remainingCourse, repeated: false });
+                }
+            });
+        } else if (tabType === 'DepTwo') {
+            const applyFiftyPct = document.getElementById('btnFiftyPercentTwo')?.classList.contains('active');
+            const showRepeatedOnly = document.getElementById('btnRepeatedOnly')?.classList.contains('active');
+            
+            const tmpGrp = {};
+            state.deprivedExceptTwo.forEach(({ trainee, remainingCourses }) => {
+                if (applyFiftyPct) {
+                    const totalC = trainee.courses.size;
+                    let depC = 0;
+                    trainee.courses.forEach(crs => { if (crs.deprived) depC++; });
+                    if (depC / totalC < 0.5) return;
+                }
+                remainingCourses.forEach(course => {
+                    const cDept = getDeptForCourse(course);
+                    if (cDept === dept) {
+                        const inst = course.instructor || 'غير محدد';
+                        if (!tmpGrp[inst]) tmpGrp[inst] = [];
+                        tmpGrp[inst].push({ trainee, course });
+                    }
+                });
+            });
+
+            for (const inst in tmpGrp) {
+                const traineeCounts = {};
+                tmpGrp[inst].forEach(item => {
+                    traineeCounts[item.trainee.id] = (traineeCounts[item.trainee.id] || 0) + 1;
+                });
+                
+                let finalItems = tmpGrp[inst];
+                if (showRepeatedOnly) {
+                    finalItems = tmpGrp[inst].filter(item => traineeCounts[item.trainee.id] > 1);
+                }
+                if (finalItems.length > 0) {
+                    grouped[inst] = finalItems.map(i => ({
+                        trainee: i.trainee,
+                        course: i.course,
+                        repeated: traineeCounts[i.trainee.id] > 1
+                    }));
+                }
+            }
+        }
+
+        if (Object.keys(grouped).length === 0) {
+            alert('لا توجد بيانات ليتم إرسالها.');
+            return;
+        }
+
+        Object.keys(grouped).sort((a,b) => a.localeCompare(b,'ar')).forEach(inst => {
+            msg += `المدرب: *${inst}*\n`;
+            grouped[inst].forEach((item, idx) => {
+                let rFlag = item.repeated ? ' - *مكرر*' : '';
+                msg += `${idx + 1}. ${item.trainee.name} (${item.course.name})${rFlag}\n`;
+            });
+            msg += `\n`;
+        });
+
+        msg += `======================\n`;
+        msg += `الرجاء التكرم بمتابعة المدربين وحثهم على التأكد من وضع المتدربين وتحضيرهم.\nمع التحية، وكالة شؤون المدربين.`;
+
+        const waLink = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
+        window.open(waLink, '_blank');
+    }
 
     return {
         renderDepAll, renderDepOne, renderDepTwo,
@@ -1802,6 +2965,8 @@ const App = (() => {
         showAddDeptInput, addDeptFromBoard,
         clearData, loadNewFile,
         setPercentMode,
-        updateReportDate, setReportDateNow, toggleReportDatePopover
+        updateReportDate, setReportDateNow, toggleReportDatePopover,
+        toggleFiftyPct, toggleRepeatedOnly, exportImagesDepOne, exportImagesDepTwo, exportAllImagesGlobal, exportAllEmailsGlobal,
+        saveDeptPhone, sendWhatsAppMessage
     };
 })();
