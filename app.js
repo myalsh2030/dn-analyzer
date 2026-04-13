@@ -477,17 +477,17 @@ const App = (() => {
             <div class="stat-card" title="إجمالي عدد المتدربين المقيدين في التقرير بمختلف حالاتهم"><div class="stat-value">${totalTrainees}</div><div class="stat-label">إجمالي المتدربين</div></div>
             <div class="stat-card" title="إجمالي المتدربين المستمرين بالتدريب فعلياً&#13;&#10;(استبعد النظام المطوي قيدهم والمنسحبين)"><div class="stat-value">${totalActive}</div><div class="stat-label">المتدربين المستمرين</div></div>
             <div class="stat-card" title="المتدربون المستمرون الذين تم حرمانهم في جميع مقرراتهم التدريبية"><div class="stat-value val-danger">${state.deprivedAll.length}</div><div class="stat-label">(مستمر) محروم بجميع المقررات</div>${cardPct(state.deprivedAll.length, 'da')}</div>
-            <div class="stat-card" title="متدربون محرومون في كافة مقرراتهم،&#13;&#10;ويتبقى لهم مقرر واحد فقط للرسوب الكلي"><div class="stat-value val-warn">${state.deprivedExceptOne.length}</div><div class="stat-label">محروم إلا مقرر</div>${cardPct(state.deprivedExceptOne.length, 'd1')}</div>
-            <div class="stat-card" title="متدربون محرومون في كافة مقرراتهم،&#13;&#10;ويتبقى لهم مقررين اثنين فقط للرسوب الكلي"><div class="stat-value" style="color:var(--secondary)">${state.deprivedExceptTwo.length}</div><div class="stat-label">محروم إلا مقررين</div>${cardPct(state.deprivedExceptTwo.length, 'd2')}</div>
+            <div class="stat-card" title="متدربون محرومون في كافة مقرراتهم،&#13;&#10;ويتبقى لهم مقرر واحد فقط للرسوب الكلي"><div class="stat-value val-danger">${state.deprivedExceptOne.length}</div><div class="stat-label">محروم إلا مقرر</div>${cardPct(state.deprivedExceptOne.length, 'd1')}</div>
+            <div class="stat-card" title="متدربون محرومون في كافة مقرراتهم،&#13;&#10;ويتبقى لهم مقررين اثنين فقط للرسوب الكلي"><div class="stat-value val-warn">${state.deprivedExceptTwo.length}</div><div class="stat-label">محروم إلا مقررين</div>${cardPct(state.deprivedExceptTwo.length, 'd2')}</div>
             <div class="stat-card" title="الشروط:&#13;&#10;• متبقي مقررين فقط للرسوب&#13;&#10;• نسبة الحرمان &#8805; 50% من إجمالي جدولهم">
-                <div class="stat-value val-danger">${depTwoAbove50Count}</div>
+                <div class="stat-value val-warn">${depTwoAbove50Count}</div>
                 <div class="stat-label">محروم إلا مقررين</div>
-                <div style="font-size: 0.75rem; color: var(--on-surface-variant); text-align: center; margin-top: 4px; font-weight: bold;">(حرمان يتجاوز 49%)</div>
+                <div style="font-size: 0.75rem; color: var(--on-surface-variant); text-align: center; margin-top: 4px; font-weight: bold;">(حرمان &#8805; 50%)</div>
             </div>
             <div class="stat-card" title="الشروط (الحالة الأشد خطورة):&#13;&#10;• متبقي مقررين فقط للرسوب&#13;&#10;• نسبة الحرمان &#8805; 50% من إجمالي جدولهم&#13;&#10;• المقررين المتبقيين يتبعان لنفس المدرب!">
                 <div class="stat-value val-danger">${criticalDepTwoCount}</div>
                 <div class="stat-label">محروم إلا مقررين</div>
-                <div style="font-size: 0.75rem; color: var(--on-surface-variant); text-align: center; margin-top: 4px; font-weight: bold;">(نفس المدرب + تتجاوز 49%)</div>
+                <div style="font-size: 0.75rem; color: var(--on-surface-variant); text-align: center; margin-top: 4px; font-weight: bold;">(نفس المدرب + حرمان &#8805; 50%)</div>
             </div>
         </div>`;
 
@@ -2856,6 +2856,8 @@ const App = (() => {
         }
     }
 
+    let pendingWhatsAppPhone = '';
+
     // --- إرسال الواتساب للمدربين في القسم ---
     function sendWhatsAppMessage(tabType, dept) {
         let phone = (state.deptPhones[dept] || '').replace(/\D/g, '');
@@ -2869,8 +2871,12 @@ const App = (() => {
             phone = '966' + phone.substring(1);
         }
 
+        let statType = tabType === 'DepOne' 
+            ? 'محروم بجميع المقررات إلا مقرر واحد' 
+            : 'محروم بجميع المقررات إلا مقررين لدى نفس المدرب';
+
         const semName = state.semester || 'الفصل الحالي';
-        let msg = `*إحصائية الحرمان - ${dept}*\n${semName}\n\n======================\n`;
+        let msg = `المكرم رئيس قسم ${dept}\nالسلام عليكم ورحمة الله وبركاته\nنرفق لكم:\n\n*إحصائية الحرمان (${statType})*\n${semName}\n\n======================\n`;
 
         const grouped = {};
         if (tabType === 'DepOne') {
@@ -2946,10 +2952,178 @@ const App = (() => {
         });
 
         msg += `======================\n`;
-        msg += `الرجاء التكرم بمتابعة المدربين وحثهم على التأكد من وضع المتدربين وتحضيرهم.\nمع التحية، وكالة شؤون المدربين.`;
+        msg += `الرجاء التكرم بمتابعة المدربين وحثهم على التأكد من حالة حضور المتدربين ودقة تحضيرهم في النظام.\nمع التحية، وكالة شؤون المدربين.`;
 
-        const waLink = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
+        const modalEl = document.getElementById('whatsappModal');
+        if (modalEl) {
+            const modal = new bootstrap.Modal(modalEl);
+            document.getElementById('whatsappMessageText').value = msg;
+            pendingWhatsAppPhone = phone;
+            modal.show();
+        } else {
+            const waLink = `https://wa.me/${phone}?text=${encodeURIComponent(msg)}`;
+            window.open(waLink, '_blank');
+        }
+    }
+
+    function confirmWhatsAppSend() {
+        const msg = document.getElementById('whatsappMessageText').value;
+        if (!msg) return;
+        const waLink = `https://wa.me/${pendingWhatsAppPhone}?text=${encodeURIComponent(msg)}`;
         window.open(waLink, '_blank');
+        const modalEl = document.getElementById('whatsappModal');
+        if (modalEl) {
+            const modalInstance = bootstrap.Modal.getInstance(modalEl);
+            if (modalInstance) modalInstance.hide();
+        }
+    }
+
+    function startTour() {
+        if (!window.driver) {
+            alert('يتم تحميل المكتبة حالياً، يرجى المحاولة بعد قليل.');
+            return;
+        }
+
+        const driver = window.driver.js.driver;
+        const fullTour = driver({
+            showProgress: true,
+            animate: true,
+            allowKeyboardControl: true,
+            progressText: '{{current}} من {{total}}',
+            nextBtnText: 'التالي &larr;',
+            prevBtnText: '&rarr; السابق',
+            doneBtnText: 'إنهاء الجولة',
+            onPopoverRendered: (popover) => {
+                const nextBtn = document.querySelector('.driver-popover-next-btn');
+                if (nextBtn) {
+                    nextBtn.focus();
+                }
+            },
+            onHighlightStarted: (element, step, { state }) => {
+                const stepIndex = state.activeIndex;
+                // أول خطوتين (0 و 1) هما لشاشة الرفع
+                if (stepIndex < 2) {
+                    document.getElementById('uploadScreen').classList.remove('d-none');
+                    document.getElementById('mainApp').classList.add('d-none');
+                } else {
+                    document.getElementById('uploadScreen').classList.add('d-none');
+                    document.getElementById('mainApp').classList.remove('d-none');
+                }
+            },
+            onDestroyed: () => {
+                // يعود لصفحة التحميل كما طلب المستخدم
+                document.getElementById('uploadScreen').classList.remove('d-none');
+                document.getElementById('mainApp').classList.add('d-none');
+            },
+            steps: [
+                {
+                    element: '#uploadZone',
+                    popover: {
+                        title: '☁️ سحب وإسقاط التقرير',
+                        description: 'هنا يمكنك سحب وإفلات ملف التقرير المستخرج (SF01) بصيغة CSV، أو الضغط لاختياره يدوياً من جهازك.',
+                        side: "bottom", align: 'start'
+                    }
+                },
+                {
+                    element: '.privacy-note',
+                    popover: {
+                        title: '🛡️ الخصوصية والأمان',
+                        description: 'لا تقلق، نظامنا يضمن لك خصوصية تامة؛ لا يتم رفع أي بيانات للإنترنت وكل شيء يُعالج محلياً داخل متصفحك.',
+                        side: "bottom", align: 'start'
+                    }
+                },
+                {
+                    element: '#mainTabs',
+                    popover: {
+                        title: '📑 واجهة النظام',
+                        description: 'بمجرد تحميل الملف، ستنتقل لهذه الواجهة المليئة بالمميزات. من هنا يمكنك التنقل بين ملخص البيانات وقوائم الحرمان المختلفة.',
+                        side: "bottom", align: 'start'
+                    }
+                },
+                {
+                    element: 'a[href="#tabMapping"]',
+                    popover: {
+                        title: '🗂️ تنظيم الأقسام',
+                        description: 'هذا التبويب هو خطوتك الأولى، هنا تتأكد من تبعية كل تخصص للقسم الصحيح، وتعدل اسم كليتك ليظهر بالتقارير، وتخزن رقم جوال رئيس القسم إذا رغبت استخدام خاصية الارسال بالواتساب.',
+                        side: "bottom", align: 'start'
+                    }
+                },
+                {
+                    element: 'a[href="#tabSummary"]',
+                    popover: {
+                        title: '📊 الملخص الإحصائي',
+                        description: 'يوفر لك نظرة شاملة على أرقام الحرمان مصنفة بالأقسام. يمكنك عرض النسب المئوية وطباعة تقرير متكامل للإدارة العُليا.',
+                        side: "bottom", align: 'start'
+                    }
+                },
+                {
+                    element: '#pctToggleGroup',
+                    popover: {
+                        title: '🧮 طرق العرض والإحصاء',
+                        description: 'من هنا يمكنك التبديل بين عرض الأرقام المطلقة، أو حساب النسبة المئوية للحالة من إجمالي التخصص، أو من إجمالي الكلية لمعرفة أين تتركز المشكلة.',
+                        side: "bottom", align: 'start'
+                    }
+                },
+                {
+                    element: 'a[href="#tabDepAll"]',
+                    popover: {
+                        title: '🔴 حرمان بجميع المقررات',
+                        description: 'هنا قائمة المتدربين غير المنتظمين نهائياً (محرومون في كل المقررات المسجلة)، نقترح طباعة هذه القائمة وتُسلم لشؤون المتدربين لاتخاذ الإجراءات كطي القيد.',
+                        side: "bottom", align: 'start'
+                    }
+                },
+                {
+                    element: 'a[href="#tabDepOne"]',
+                    popover: {
+                        title: '🟡 محرومون إلا مقرر',
+                        description: 'تظهر قائمة المتدربين المحرومين بجميع المقررات إلا مقرر واحد. وتعرض لكل مدرب قائمة المتدربين لديه.',
+                        side: "bottom", align: 'start'
+                    }
+                },
+                {
+                    element: 'a[href="#tabDepTwo"]',
+                    popover: {
+                        title: '🟠 محرومون إلا مقررين',
+                        description: 'ويوجد ميزة زر "مكررون" بحيث يظهر فقط المتدربين الموجودين عند (نفس المدرب) في مقررين لاكتشاف أي سبب محتمل. وعند تفعيل زر 50% فلن يظهر إلا المتدربون المحرومون في نصف المقررات فأكثر.',
+                        side: "bottom", align: 'start'
+                    }
+                },
+                {
+                    element: '#btnGlobalExport',
+                    popover: {
+                        title: '📦 تصدير الصور',
+                        description: 'يصدر لك ملف مضغوط يحوي صور بيان مخصص لكل مدرب مرتبة (حسب القسم والمدرب) لتسهيل مشاركتها.',
+                        side: "bottom", align: 'start'
+                    }
+                },
+                {
+                    element: '#btnGlobalEmail',
+                    popover: {
+                        title: '📧 إيميلات جاهزة',
+                        description: 'سيقوم بتحميل رسائل إيميل Outlook مجهزة مسبقاً لكافة المدربين مع المرفقات ليتم ارسالها مباشرة.',
+                        side: "bottom", align: 'start'
+                    }
+                },
+                {
+                    element: 'button[onclick="App.loadNewFile()"]',
+                    popover: {
+                        title: '🔄 رفع تقرير جديد',
+                        description: 'إذا أردت تحديث البيانات، فلا حاجة لحذف كامل البيانات، اضغط هنا لرفع الملف الجديد وتحديث الإحصائيات مباشرة.',
+                        side: "bottom", align: 'start'
+                    }
+                },
+                {
+                    element: 'button[onclick="App.clearData()"]',
+                    popover: {
+                        title: '🗑️ حذف البيانات',
+                        description: 'لحماية الخصوصية ومسح جميع البيانات المخزنة من متصفحك بشكل شامل والبدء تماماً من الصفر، استخدم هذا الزر.',
+                        side: "bottom", align: 'start'
+                    }
+                }
+            ]
+        });
+        
+        fullTour.drive();
     }
 
     return {
@@ -2961,6 +3135,6 @@ const App = (() => {
         setPercentMode,
         updateReportDate, setReportDateNow, toggleReportDatePopover,
         toggleFiftyPct, toggleRepeatedOnly, exportImagesDepOne, exportImagesDepTwo, exportAllImagesGlobal, exportAllEmailsGlobal,
-        saveDeptPhone, sendWhatsAppMessage
+        saveDeptPhone, sendWhatsAppMessage, startTour, confirmWhatsAppSend
     };
 })();

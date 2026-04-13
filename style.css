@@ -1047,7 +1047,18 @@ body {
 .pct-toggle-btn.active {
     background: linear-gradient(135deg, var(--primary), var(--primary-container));
     color: var(--on-primary);
-    box-shadow: 0 2px 8px rgba(0, 66, 38, 0.2);
+    box-shadow: 0 4px 16px rgba(0, 66, 38, 0.25);
+}
+.status-indicator::after {
+    content: ' (غير مفعل)';
+    font-size: 0.8em;
+    color: var(--error);
+    margin-right: 4px;
+    font-weight: 800;
+}
+.pct-toggle-btn.active .status-indicator::after {
+    content: ' (مفعل)';
+    color: var(--secondary-container);
 }
 .pct-toggle-btn i {
     font-size: 0.8rem;

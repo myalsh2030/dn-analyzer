@@ -8,7 +8,18 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.rtl.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/driver.js@1.0.1/dist/driver.css" />
     <link href="style.css" rel="stylesheet">
+    <style>
+        /* تخصيص خط وتصميم الجولة التعريفية ليتوافق مع هوية النظام */
+        .driver-popover * {
+            font-family: 'Cairo', sans-serif !important;
+        }
+        .driver-popover-title {
+            color: var(--primary) !important;
+            font-weight: 700 !important;
+        }
+    </style>
 </head>
 <body>
 
@@ -19,7 +30,10 @@
             <!-- الجانب الأيمن: المعلومات والمسار -->
             <div class="upload-info-side">
                 <div class="upload-brand">
-            <img src="logo.png" alt="شعار المؤسسة" class="upload-logo">
+            <img src="logo.png" alt="شعار المؤسسة" class="upload-logo flex-shrink-0">
+            <button class="btn btn-sm btn-outline-primary mb-3 d-flex align-items-center justify-content-center gap-1 mx-auto" onclick="App.startTour('upload')" style="border-radius: 20px; font-weight: 600;">
+                <i data-lucide="info" style="width: 18px; height: 18px;"></i> جولة تعريفية
+            </button>
             <h1 class="upload-title">
                 متابعة الحرمان للمتدربين
                 <div class="upload-subtitle-small">(مستمر) محروم بجميع المقررات | محروم إلا مقرر | محروم إلا مقررين</div>
@@ -122,36 +136,36 @@
 <!-- ===== التطبيق الرئيسي ===== -->
 <div id="mainApp" class="d-none">
     <!-- الشريط العلوي -->
-    <nav class="top-bar">
-        <div class="container-fluid d-flex align-items-center justify-content-between">
+    <nav class="top-bar" style="overflow-x: auto;">
+        <div class="container-fluid d-flex align-items-center justify-content-between flex-nowrap" style="min-width: max-content;">
             <!-- يمين: الشعار، العنوان، الكلية، الفصل التدريبي -->
-            <div class="d-flex align-items-center flex-wrap gap-3">
-                <img src="logo.png" alt="الشعار" class="top-logo">
+            <div class="d-flex align-items-center flex-nowrap gap-2 flex-shrink-0">
+                <img src="logo.png" alt="الشعار" class="top-logo flex-shrink-0">
                 
-                <div class="d-flex flex-column justify-content-center" style="border-left: 1px solid var(--outline-variant); padding-left: 1rem;">
-                    <h5 class="mb-0 fw-bold" id="topTitle" style="color: var(--primary);">متابعة الحرمان للمتدربين</h5>
-                    <div class="top-title-small" style="margin-top: 4px;">(مستمر) محروم بجميع المقررات | محروم إلا مقرر | محروم إلا مقررين</div>
+                <div class="d-flex flex-column justify-content-center flex-shrink-0" style="border-left: 1px solid var(--outline-variant); padding-left: 0.75rem;">
+                    <h5 class="mb-0 fw-bold text-nowrap" id="topTitle" style="color: var(--primary);">متابعة الحرمان للمتدربين</h5>
+                    <div class="top-title-small text-nowrap" style="margin-top: 4px;">(مستمر) محروم بجميع المقررات | محروم إلا مقرر | محروم إلا مقررين</div>
                 </div>
 
-                <div class="d-flex align-items-center gap-3">
-                    <div class="d-flex align-items-center gap-2 px-3 py-1 bg-white shadow-sm" style="border: 1px solid var(--outline-variant); border-radius: var(--radius-md); color: var(--primary); font-weight: 700; font-size: 0.9rem;">
+                <div class="d-flex align-items-center gap-2 flex-nowrap flex-shrink-0">
+                    <div class="d-flex align-items-center gap-1 px-2 py-1 bg-white shadow-sm text-nowrap" style="border: 1px solid var(--outline-variant); border-radius: var(--radius-md); color: var(--primary); font-weight: 700; font-size: 0.9rem;">
                         <i class="bi bi-building"></i>
                         <span id="topCollege"></span>
                     </div>
                     
-                    <div class="d-flex align-items-center gap-2 px-3 py-1 bg-white shadow-sm" style="border: 1px solid var(--outline-variant); border-radius: var(--radius-md); color: var(--on-surface-variant); font-weight: 600; font-size: 0.82rem;">
+                    <div class="d-flex align-items-center gap-1 px-2 py-1 bg-white shadow-sm text-nowrap" style="border: 1px solid var(--outline-variant); border-radius: var(--radius-md); color: var(--on-surface-variant); font-weight: 600; font-size: 0.82rem;">
                         <i class="bi bi-calendar3"></i>
                         <span id="topSemester"></span>
                     </div>
 
                     <!-- تاريخ التقرير في الشريط العلوي -->
-                    <div id="topReportDateBadge" class="top-report-date-badge d-none" onclick="App.toggleReportDatePopover(event)">
+                    <div id="topReportDateBadge" class="top-report-date-badge d-none text-nowrap flex-shrink-0" onclick="App.toggleReportDatePopover(event)">
                         <i class="bi bi-clock"></i>
                         <span id="topReportDate"></span>
                         <span id="topReportAge" class="top-report-age"></span>
                         <i class="bi bi-pencil-square report-date-edit-icon"></i>
                         <!-- بوبوفر تعديل التاريخ -->
-                        <div id="reportDatePopover" class="report-date-popover" onclick="event.stopPropagation()">
+                        <div id="reportDatePopover" class="report-date-popover text-wrap" onclick="event.stopPropagation()">
                             <div class="report-date-popover-title">
                                 <i class="bi bi-calendar-event"></i> تعديل تاريخ التقرير
                             </div>
@@ -170,17 +184,20 @@
             </div>
 
             <!-- يسار: الأزرار -->
-            <div class="d-flex align-items-center gap-2">
-                <button class="btn btn-sm" id="btnGlobalExport" onclick="App.exportAllImagesGlobal()" style="background: linear-gradient(135deg, #0f6c44, #184b33); color: #fff; font-weight: 700; padding: 5px 16px; border-radius: 8px; border: none; box-shadow: 0 4px 10px rgba(15, 108, 68, 0.25); display: flex; align-items: center; gap: 8px; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'" title="تحميل صور المدربين لجميع التبويبات بحالتها الافتراضية">
-                    <i class="bi bi-file-earmark-zip-fill" style="font-size: 1.1rem; color: #ffca28;"></i> تصدير الصور
+            <div class="d-flex align-items-center gap-2 flex-nowrap flex-shrink-0">
+                <button class="btn btn-sm text-nowrap" id="btnGlobalExport" onclick="App.exportAllImagesGlobal()" style="background: linear-gradient(135deg, #0f6c44, #184b33); color: #fff; font-weight: 700; font-size: 0.75rem; padding: 5px 16px; border-radius: 8px; border: none; box-shadow: 0 4px 10px rgba(15, 108, 68, 0.25); display: flex; align-items: center; gap: 8px; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'" title="تحميل صور المدربين لجميع التبويبات بحالتها الافتراضية">
+                    <i data-lucide="file-archive" style="width: 16px; height: 16px; color: #ffca28;"></i> تصدير الصور
                 </button>
-                <button class="btn btn-sm" id="btnGlobalEmail" onclick="App.exportAllEmailsGlobal()" style="background: linear-gradient(135deg, #0056b3, #003d82); color: #fff; font-weight: 700; padding: 5px 16px; border-radius: 8px; border: none; box-shadow: 0 4px 10px rgba(0, 86, 179, 0.25); display: flex; align-items: center; gap: 8px; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'" title="تحميل رسائل إيميل Outlook جاهزة للإرسال بالمرفقات">
-                    <i class="bi bi-envelope-paper-fill" style="font-size: 1.1rem; color: #82cbf9;"></i> إيميلات جاهزة
+                <button class="btn btn-sm text-nowrap" id="btnGlobalEmail" onclick="App.exportAllEmailsGlobal()" style="background: linear-gradient(135deg, #0056b3, #003d82); color: #fff; font-weight: 700; font-size: 0.75rem; padding: 5px 16px; border-radius: 8px; border: none; box-shadow: 0 4px 10px rgba(0, 86, 179, 0.25); display: flex; align-items: center; gap: 8px; transition: transform 0.2s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'" title="تحميل رسائل إيميل Outlook جاهزة للإرسال بالمرفقات">
+                    <i data-lucide="mail" style="width: 16px; height: 16px; color: #82cbf9;"></i> إيميلات جاهزة
                 </button>
-                <button class="btn btn-sm btn-outline-danger" onclick="App.clearData()" title="حذف البيانات">
+                <button class="btn btn-sm btn-outline-info flex-shrink-0" onclick="App.startTour('main')" title="جولة تعريفية">
+                    <i data-lucide="info" style="width: 16px; height: 16px; vertical-align: middle;"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-danger flex-shrink-0" onclick="App.clearData()" title="حذف البيانات">
                     <i class="bi bi-trash3"></i>
                 </button>
-                <button class="btn btn-sm btn-outline-secondary" onclick="App.loadNewFile()" title="رفع ملف جديد">
+                <button class="btn btn-sm btn-outline-secondary flex-shrink-0" onclick="App.loadNewFile()" title="رفع ملف جديد">
                     <i class="bi bi-upload"></i>
                 </button>
             </div>
@@ -280,7 +297,7 @@
                     <div class="d-flex gap-2 align-items-center">
                         <div class="pct-toggle-group">
                             <button id="btnFiftyPercentOne" class="pct-toggle-btn active" onclick="App.toggleFiftyPct('One')" title="إظهار من نسبة حرمانه 50% أو أكثر">
-                                <i class="bi bi-pie-chart"></i> الـ 50%
+                                <i class="bi bi-pie-chart"></i> محرومين &#8805; 50%<span class="status-indicator"></span>
                             </button>
                         </div>
                         <div class="action-box">
@@ -305,10 +322,10 @@
                     <div class="d-flex gap-2 align-items-center">
                         <div class="pct-toggle-group">
                             <button id="btnRepeatedOnly" class="pct-toggle-btn active" onclick="App.toggleRepeatedOnly()" title="إظهار المتدربين المكررين عند نفس المدرب فقط">
-                                <i class="bi bi-people"></i> مكررون 
+                                <i class="bi bi-people"></i> اظهار المكررين عند نفس المدرب فقط<span class="status-indicator"></span>
                             </button>
                             <button id="btnFiftyPercentTwo" class="pct-toggle-btn active" onclick="App.toggleFiftyPct('Two')" title="إظهار من نسبة حرمانه 50% أو أكثر">
-                                <i class="bi bi-pie-chart"></i> الـ 50%
+                                <i class="bi bi-pie-chart"></i> محرومين &#8805; 50%<span class="status-indicator"></span>
                             </button>
                         </div>
                         <div class="action-box">
@@ -329,14 +346,48 @@
 <!-- ===== منطقة الطباعة ===== -->
 <div id="printArea"></div>
 
+<!-- Modal for WhatsApp Message Editing -->
+<div class="modal fade" id="whatsappModal" tabindex="-1" aria-labelledby="whatsappModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content" style="border: none; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 30px rgba(0,0,0,0.1);">
+      <div class="modal-header" style="background: #f8faf9; border-bottom: 1px solid #eceeed;">
+        <h5 class="modal-title" id="whatsappModalLabel" style="color: #004226; font-weight: 700;">
+            <i class="bi bi-whatsapp text-success me-2"></i> مراجعة رسالة الواتساب
+        </h5>
+        <button type="button" class="btn-close m-0" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" style="padding: 1.5rem;">
+        <div class="mb-2">
+          <label for="whatsappMessageText" class="form-label" style="color: #4a5568; font-weight: 600; font-size: 0.95rem;">يمكنك تعديل نص الرسالة قبل الإرسال:</label>
+          <textarea class="form-control" id="whatsappMessageText" rows="15" style="font-family: 'Cairo', sans-serif; direction: rtl; border-radius: 8px; border: 1px solid #ced4da; box-shadow: inset 0 1px 2px rgba(0,0,0,0.075); font-size: 0.95rem; line-height: 1.6; resize: vertical;"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer" style="background: #f8faf9; border-top: 1px solid #eceeed;">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius: 8px; font-weight: 600; padding: 8px 16px;">إلغاء</button>
+        <button type="button" class="btn btn-success" id="btnConfirmWhatsApp" onclick="App.confirmWhatsAppSend()" style="border-radius: 8px; font-weight: 700; padding: 8px 24px; box-shadow: 0 4px 6px rgba(25, 135, 84, 0.2);">
+          <i class="bi bi-send-fill ms-1"></i> إرسال الآن
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- Scripts -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/driver.js@1.0.1/dist/driver.js.iife.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/lucide@latest/dist/umd/lucide.min.js"></script>
 
 <script src="logoBase64.js"></script>
-<script src="app.js?v=2"></script>
+<script src="app.js?v=16"></script>
+<script>
+  // تهيئة أيقونات لوسيد
+  document.addEventListener('DOMContentLoaded', () => {
+      lucide.createIcons();
+  });
+</script>
 </body>
 </html>
