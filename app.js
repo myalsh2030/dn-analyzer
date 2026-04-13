@@ -452,12 +452,6 @@ const App = (() => {
 
         // بطاقات الإحصائيات
         const cardPct = (val, category) => {
-            if (percentMode === 'none') return '';
-            if (percentMode === 'spec') {
-                // نسبة من إجمالي المتدربين
-                return `<div class="stat-pct">${totalTrainees ? Math.round((val / totalTrainees) * 100) : 0}% من الإجمالي</div>`;
-            }
-            // college - لا معنى لها في البطاقات العلوية
             return '';
         };
 
@@ -481,7 +475,7 @@ const App = (() => {
 
         let html = `<div class="stat-cards">
             <div class="stat-card" title="إجمالي عدد المتدربين المقيدين في التقرير بمختلف حالاتهم"><div class="stat-value">${totalTrainees}</div><div class="stat-label">إجمالي المتدربين</div></div>
-            <div class="stat-card" title="إجمالي المتدربين المستمرين بالتدريب فعلياً&#13;&#10;(استبعد النظام المطوي قيدهم والمنسحبين)"><div class="stat-value">${totalActive}</div><div class="stat-label">المتدربين المستمرين</div>${percentMode !== 'none' ? `<div class="stat-pct">${totalTrainees ? Math.round((totalActive / totalTrainees) * 100) : 0}%</div>` : ''}</div>
+            <div class="stat-card" title="إجمالي المتدربين المستمرين بالتدريب فعلياً&#13;&#10;(استبعد النظام المطوي قيدهم والمنسحبين)"><div class="stat-value">${totalActive}</div><div class="stat-label">المتدربين المستمرين</div></div>
             <div class="stat-card" title="المتدربون المستمرون الذين تم حرمانهم في جميع مقرراتهم التدريبية"><div class="stat-value val-danger">${state.deprivedAll.length}</div><div class="stat-label">(مستمر) محروم بجميع المقررات</div>${cardPct(state.deprivedAll.length, 'da')}</div>
             <div class="stat-card" title="متدربون محرومون في كافة مقرراتهم،&#13;&#10;ويتبقى لهم مقرر واحد فقط للرسوب الكلي"><div class="stat-value val-warn">${state.deprivedExceptOne.length}</div><div class="stat-label">محروم إلا مقرر</div>${cardPct(state.deprivedExceptOne.length, 'd1')}</div>
             <div class="stat-card" title="متدربون محرومون في كافة مقرراتهم،&#13;&#10;ويتبقى لهم مقررين اثنين فقط للرسوب الكلي"><div class="stat-value" style="color:var(--secondary)">${state.deprivedExceptTwo.length}</div><div class="stat-label">محروم إلا مقررين</div>${cardPct(state.deprivedExceptTwo.length, 'd2')}</div>
