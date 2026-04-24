@@ -16,9 +16,24 @@
 # ملفات الملاحظات النصية الجانبية
 _inspect*.txt
 _logo_b64.txt
+logo_base64.txt
+
+# ملف اللوغو بصيغة Base64 (مضمّن في logoBase64.js)
+logoBase64.js
+
+# ملفات المهارات والتعليمات
+skill.md
+
+# مجلد النسخ القديمة
+OLD/
 
 # ملفات تتبع نظام التشغيل
 .DS_Store
 Thumbs.db
-logo_base64.txt
-skill.md
+desktop.ini
+
+# بيئة التطوير
+.vscode/
+.idea/
+*.swp
+*.swo
